@@ -127,7 +127,10 @@ class _WorkExperienceInputDialogState extends State<WorkExperienceInputDialog> {
     addMode = (widget.index == null || widget.workExperience == null);
     _titleTextController.text = widget.workExperience?.title ?? '';
     _companyNameTextController.text = widget.workExperience?.companyName ?? '';
-    _employmentType = widget.workExperience?.employmentType;
+    String? employmentType = widget.workExperience?.employmentType;
+    _employmentType = (employmentType == null || employmentType.isEmpty)
+        ? null
+        : widget.workExperience?.employmentType;
     _locationTextController.text = widget.workExperience?.location ?? '';
     _startDateTextController.text = widget.workExperience?.startDate ?? '';
     _endDateTextController.text = widget.workExperience?.endDate ?? '';

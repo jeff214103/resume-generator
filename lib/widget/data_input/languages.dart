@@ -62,7 +62,8 @@ class _LanguageInputDialogState extends State<LanguageInputDialog> {
     super.initState();
     addMode = (widget.index == null || widget.language == null);
     _languageTextController.text = widget.language?.language ?? '';
-    _proficiency = widget.language?.proficiency;
+    String? proficiency = widget.language?.proficiency;
+    _proficiency = (proficiency == null || proficiency.isEmpty)? null: widget.language?.proficiency;
   }
 
   @override

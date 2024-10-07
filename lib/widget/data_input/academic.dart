@@ -191,8 +191,10 @@ Strict json format as follows is needed.
                         throw Exception('No files selected');
                       }
                       return geminiResponse(
-                          context: context,
-                          prompt: [Content.multi(newList)]).then((response) {
+                              context: context,
+                              prompt: [Content.multi(newList)],
+                              responseMimeType: 'application/json')
+                          .then((response) {
                         if (response.text == null) {
                           throw Exception('Empty respoonse');
                         }

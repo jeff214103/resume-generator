@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:google_generative_ai/google_generative_ai.dart' as google;
 import 'package:personal_cv/model/academic.dart';
 import 'package:personal_cv/model/activities.dart';
 import 'package:personal_cv/model/award.dart';
@@ -12,9 +14,13 @@ import 'package:personal_cv/model/language.dart';
 import 'package:personal_cv/model/publication.dart';
 import 'package:personal_cv/model/skill.dart';
 import 'package:personal_cv/model/workexp.dart';
+import 'package:personal_cv/util/gemini_helper.dart';
 
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
+
+import 'package:personal_cv/widget/dialog.dart';
+import 'package:personal_cv/widget/gemini.dart';
 
 class DataProvider extends ChangeNotifier {
   final FlutterSecureStorage storage = const FlutterSecureStorage();
@@ -60,6 +66,8 @@ class DataProvider extends ChangeNotifier {
     BackgroundInfo.keys.map((e) => storage.delete(key: e)).toList();
 
     _backgroundInfo = BackgroundInfo.fromJson({});
+
+    notifyListeners();
   }
 
   Future<void> geminiSetting(String apiKey, String model) async {
@@ -359,9 +367,9 @@ class DataProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> importData() async {
+  Future<bool> importData() async {
     if (kIsWeb) {
-      FilePicker.platform.pickFiles(
+      return FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
       ).then((result) {
@@ -377,10 +385,146 @@ class DataProvider extends ChangeNotifier {
           );
 
           notifyListeners();
+          return true;
+        } else {
+          return false;
         }
       });
     } else {
       throw UnimplementedError("Not implemented in other platform");
     }
+  }
+
+  Future<bool> importAdvance(BuildContext context) {
+    showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return const LoadingDialogBody(
+              text: 'Loading and analyzing the information');
+        });
+    return pickAndConvertFilesToDataParts(context).then((dataParts) {
+      final Iterable<google.Part> newList = List.from([
+        google.TextPart('''
+Retrieve the following information of the following aspect, each component an element inside array. 
+If the element information not found, fill with empty string.
+If the aspect not found, return with empty array.
+1. Work Experience JSON. The element as follows.
+{
+  'title': '<The title of the work experience>',
+  'employmentType': '<The employment type of the work experience>',
+  'companyName': '<The company name of the work experience>',
+  'location': '<The location of the company>',
+  'startDate': '<The start date of the work, format: MMMM YYYY>',
+  'endDate': '<The end date of the work, format: MMMM YYYY>',
+  'description': '<The description of the work>',
+  'skills': [] //List of skills JSON
+}
+2. Academic JSON. The element as follows.
+{
+  'school': '<The full name of the school>',
+  'degree': '<The degree of the education. i.e. Bachelor, Master>',
+  'field': '<The field of the education. i.e. Bachelor, Master>',
+  'startDate': '<The start date of the education, format: MMMM YYYY>',
+  'endDate': '<The end date of the education, format: MMMM YYYY>',
+  'description': '<The description of the education>',
+  'skills': [], //List of skills JSON
+}
+3. Skill JSON. The element as follows.
+{
+  'skill': '<The name of the skill>',
+}
+4. Language JSON. The element as follows.
+{
+  'language': '<The name of the lanuage>',
+  'proficiency': '<The proficiency of the language. Valid Value: ['Fundamental','Novice','Intermediate','Advanced','Expert'>',
+}
+5. Activity JSON. The element as follows.
+{
+  'title': '<The title of the activity>',
+  'location': '<The location of the activity>',
+  'startDate': '<The start date of the activity, format: MMMM YYYY>',
+  'duration': '<The duration of the activity, i.e. 8 months, 1 days, 3 years>',
+  'description': '<The description of the activity>',
+}
+6. Award JSON. The element as follows.
+{
+  'title': '<The title of the award>',
+  'issuer':  '<The issuer of the award>',
+  'issueDate': '<The issue date of the award>',
+  'description': '<The description of the award>',
+}
+7. Course JSON. The element as follows.
+{
+  'title': '<The title of the course>',
+  'location': '<The location of the course>',
+  'startDate': '<The start date of the course, format: MMMM YYYY>',
+  'duration': '<The duration of the course, i.e. 8 months, 1 days, 3 years>',
+  'description': '<The description of the course>',
+}
+8. Publication JSON. The element as follows.
+{
+  'title': '<The title of the publication>',
+  'publication': '<The publication authority of the publication>',
+  'date': '<The date of the publication, format: MMMM YYYY>',
+  'description': '<The description of the publication>',
+}
+
+Return the result using this JSON schema:
+{
+  "workExperiences": [], //List of Work Experience JSON
+  "academics": [], //List of Academic JSON
+  "skills": [], //List of Skill JSON
+  "languages": [], //List of Language JSON
+  "activities": [], //List of Activity JSON
+  "awards": [], //List of Award JSON
+  "courses": [], //List of Course JSON
+  "publications": [] //List of Publication JSON
+}
+''')
+      ])
+        ..addAll(dataParts);
+      if (dataParts.isEmpty) {
+        throw Exception('No files selected');
+      }
+      return geminiResponse(
+              context: context,
+              prompt: [google.Content.multi(newList)],
+              responseMimeType: 'application/json')
+          .then((response) {
+        if (response.text == null) {
+          throw Exception('Empty respoonse');
+        }
+        Navigator.of(context).pop();
+        try {
+          _backgroundInfo = BackgroundInfo.fromJson(jsonDecode(response.text!));
+
+          Future.wait(
+            _backgroundInfo.toJson().entries.map((e) {
+              return storage.write(key: e.key, value: jsonEncode(e.value));
+            }),
+          );
+
+          notifyListeners();
+
+          return true;
+        } catch (e) {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return GeminiRawResponse(
+                response: response.text ?? 'null',
+              );
+            },
+          );
+          return false;
+        }
+      });
+    }).catchError((error) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error getting files: $error')),
+      );
+      return false;
+    });
   }
 }

@@ -11,6 +11,7 @@ import 'package:personal_cv/screen/generate.dart';
 import 'package:personal_cv/screen/info.dart';
 import 'package:personal_cv/screen/setting.dart';
 import 'package:personal_cv/screen/welcome.dart';
+import 'package:personal_cv/widget/data_import_widget.dart';
 import 'package:personal_cv/widget/data_input/academic.dart';
 import 'package:personal_cv/widget/data_input/activity.dart';
 import 'package:personal_cv/widget/data_input/award.dart';
@@ -99,7 +100,11 @@ class _HomePageState extends State<HomePage> {
             dataProvider: dataProvider,
           ),
           callback: (value) {
-            _redirectTo(context, const WelcomeScreen(allowSkip: false,));
+            _redirectTo(
+                context,
+                const WelcomeScreen(
+                  allowSkip: false,
+                ));
           },
         );
       }
@@ -122,7 +127,11 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             tooltip: 'Help',
             onPressed: () {
-              _redirectTo(context, const WelcomeScreen(allowSkip: true,));
+              _redirectTo(
+                  context,
+                  const WelcomeScreen(
+                    allowSkip: true,
+                  ));
             },
             icon: const Icon(Icons.help),
           ),
@@ -191,10 +200,7 @@ class MainLayout extends StatelessWidget {
                 iconData: Icons.pending_actions,
                 background: Theme.of(context).primaryColor,
                 onTap: () {
-                  _redirectTo(
-                      context,
-                      const GenerateScreen()
-                  );
+                  _redirectTo(context, const GenerateScreen());
                 },
               ),
             ),
@@ -544,7 +550,10 @@ class MainLayout extends StatelessWidget {
                   iconData: Icons.file_upload,
                   background: Colors.blue,
                   onTap: () {
-                    dataProvider.importData();
+                    showDialog(
+                        context: context,
+                        builder: (BuildContext context) =>
+                            ImportDialog(dataProvider: dataProvider));
                   },
                 ),
                 DashboardCard(
@@ -631,32 +640,6 @@ class DashboardLayout extends StatelessWidget {
               crossAxisSpacing: 40,
               mainAxisSpacing: 30,
               children: widgets),
-        ],
-      ),
-    );
-  }
-}
-
-class DashboardItem extends StatelessWidget {
-  final String title;
-  final Widget widget;
-  const DashboardItem({super.key, required this.title, required this.widget});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(
-            height: 10,
-          ),
-          widget,
         ],
       ),
     );

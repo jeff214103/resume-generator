@@ -49,13 +49,15 @@ Wait for my instruction in the next prompt before any action.
     return chat.sendMessage(Content.text(prompt)).then((_) {
       return chat.sendMessage(Content.text('''
 Finish writing your resume based on the following instruction
-1. Select the relvant background information
-2. Highlight the point fulfill the requirement
-3. Use the requirement keyword for the relvant background information elaboration
-4. Tailor for Preferred Qualifications
-5. Use strong action verb
-6. One or two page length
-7. No filling part, everything base on given information
+1. Prioritize and highlight the background information fulfill the requirement
+2. Use the requirement keyword for the relvant background information elaboration
+3. Tailoring for the Role
+4. Everything base on given background information
+5. Highlighting Preferred Qualifications
+6. For work experience, write point in the format of "Accomplished [X] as measured by [Y], by doing [Z]."
+7. Quantify Achievements
+8. Use strong action verb
+9. One or two page length
   ''')).then((_) {
         return chat;
       });

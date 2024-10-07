@@ -27,10 +27,12 @@ Future<List<DataPart>> pickAndConvertFilesToDataParts(BuildContext context) {
 }
 
 Future<GenerateContentResponse> geminiResponse(
-    {required BuildContext context, required Iterable<Content> prompt}) {
+    {required BuildContext context,
+    required Iterable<Content> prompt,
+    String? responseMimeType}) {
   GenerativeModel model = GenerativeModel(
-    model: Provider.of<DataProvider>(context, listen: false).geminiModel,
-    apiKey: Provider.of<DataProvider>(context, listen: false).geminiAPIKey,
-  );
+      model: Provider.of<DataProvider>(context, listen: false).geminiModel,
+      apiKey: Provider.of<DataProvider>(context, listen: false).geminiAPIKey,
+      generationConfig: GenerationConfig(responseMimeType: responseMimeType));
   return model.generateContent(prompt);
 }

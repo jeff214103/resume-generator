@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:personal_cv/model/course.dart';
 import 'package:personal_cv/providers/data_provider.dart';
+import 'package:personal_cv/util/string_display.dart';
 import 'package:personal_cv/widget/data_input/date_input.dart';
 import 'package:personal_cv/widget/dialog.dart';
 import 'package:personal_cv/widget/gemini.dart';
@@ -24,11 +25,11 @@ class CourseTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            course.title,
+            stringConversion(course.title, 'Title Missing'),
             style: Theme.of(context).textTheme.titleLarge,
           ),
           Text(
-            "${course.location}",
+            stringConversion(course.location, 'Location Missing'),
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           Text(

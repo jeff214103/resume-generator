@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:personal_cv/model/language.dart';
 import 'package:personal_cv/providers/data_provider.dart';
+import 'package:personal_cv/util/string_display.dart';
 import 'package:provider/provider.dart';
 
 class LanguageTile extends StatelessWidget {
@@ -17,10 +18,12 @@ class LanguageTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       title: Text(
-        language.language,
+        stringConversion(language.language, 'Language Missing'),
         style: Theme.of(context).textTheme.titleLarge,
       ),
-      subtitle: Text(language.proficiency),
+      subtitle: Text(
+        stringConversion(language.proficiency, 'Proficiency Missing'),
+      ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -63,7 +66,9 @@ class _LanguageInputDialogState extends State<LanguageInputDialog> {
     addMode = (widget.index == null || widget.language == null);
     _languageTextController.text = widget.language?.language ?? '';
     String? proficiency = widget.language?.proficiency;
-    _proficiency = (proficiency == null || proficiency.isEmpty)? null: widget.language?.proficiency;
+    _proficiency = (proficiency == null || proficiency.isEmpty)
+        ? null
+        : widget.language?.proficiency;
   }
 
   @override
@@ -78,60 +83,62 @@ class _LanguageInputDialogState extends State<LanguageInputDialog> {
             maxHeight: MediaQuery.of(context).size.height * 0.8),
         child: Form(
           key: _formKey,
-          child: SingleChildScrollView(child: Column(
-            children: [
-              ListTile(
-                title: const Text('Language *'),
-                subtitle: TextFormField(
-                  controller: _languageTextController,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please input the language title';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-              ListTile(
-                title: const Text('Proficiency *'),
-                subtitle: DropdownButtonFormField(
-                  value: _proficiency,
-                  hint: const Text(
-                    'Please Select',
-                  ),
-                  isExpanded: true,
-                  onChanged: (value) {
-                    setState(() {
-                      _proficiency = value;
-                    });
-                  },
-                  validator: (String? value) {
-                    if (value == null || value.isEmpty) {
-                      return "Need to choose employment type";
-                    }
-                    return null;
-                  },
-                  items: [
-                    'Fundamental',
-                    'Novice',
-                    'Intermediate',
-                    'Advanced',
-                    'Expert',
-                  ].map(
-                    (String val) {
-                      return DropdownMenuItem(
-                        value: val,
-                        child: Text(
-                          val,
-                        ),
-                      );
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                ListTile(
+                  title: const Text('Language *'),
+                  subtitle: TextFormField(
+                    controller: _languageTextController,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please input the language title';
+                      }
+                      return null;
                     },
-                  ).toList(),
+                  ),
                 ),
-              ),
-            ],
+                ListTile(
+                  title: const Text('Proficiency *'),
+                  subtitle: DropdownButtonFormField(
+                    value: _proficiency,
+                    hint: const Text(
+                      'Please Select',
+                    ),
+                    isExpanded: true,
+                    onChanged: (value) {
+                      setState(() {
+                        _proficiency = value;
+                      });
+                    },
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return "Need to choose employment type";
+                      }
+                      return null;
+                    },
+                    items: [
+                      'Fundamental',
+                      'Novice',
+                      'Intermediate',
+                      'Advanced',
+                      'Expert',
+                    ].map(
+                      (String val) {
+                        return DropdownMenuItem(
+                          value: val,
+                          child: Text(
+                            val,
+                          ),
+                        );
+                      },
+                    ).toList(),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),),
+        ),
       ),
       actions: [
         TextButton(

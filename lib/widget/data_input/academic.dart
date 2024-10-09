@@ -7,6 +7,7 @@ import 'package:personal_cv/model/course.dart';
 import 'package:personal_cv/model/skill.dart';
 import 'package:personal_cv/providers/data_provider.dart';
 import 'package:personal_cv/util/gemini_helper.dart';
+import 'package:personal_cv/util/string_display.dart';
 import 'package:personal_cv/widget/data_input/array_input.dart';
 import 'package:personal_cv/widget/data_input/date_input.dart';
 import 'package:personal_cv/widget/dialog.dart';
@@ -31,14 +32,15 @@ class AcademicTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            academic.school,
+            stringConversion(academic.school, 'School Missing'),
             style: Theme.of(context).textTheme.titleLarge,
           ),
           Text(
-            "${academic.degree}, ${academic.field}",
+            "${stringConversion(academic.degree, 'Degree Missing')}, ${stringConversion(academic.field, 'Field Missing')}",
             style: Theme.of(context).textTheme.bodyLarge,
           ),
-          Text('${academic.startDate} - ${academic.endDate}',
+          Text(
+              '${stringConversion(academic.startDate, 'Start Date Missing')} - ${stringConversion(academic.endDate, 'End Date Missing')}',
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium

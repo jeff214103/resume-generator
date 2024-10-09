@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:personal_cv/model/award.dart';
 import 'package:personal_cv/providers/data_provider.dart';
+import 'package:personal_cv/util/string_display.dart';
 import 'package:personal_cv/widget/data_input/date_input.dart';
 import 'package:personal_cv/widget/dialog.dart';
 import 'package:personal_cv/widget/gemini.dart';
@@ -24,14 +25,14 @@ class AwardTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            award.title,
+            stringConversion(award.title, 'Title Missing'),
             style: Theme.of(context).textTheme.titleLarge,
           ),
           Text(
-            award.issuer,
+            stringConversion(award.issuer, 'Issuer Missing'),
             style: Theme.of(context).textTheme.bodyLarge,
           ),
-          Text(award.issueDate,
+          Text(stringConversion(award.issueDate, 'Issue Date Missing'),
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium
@@ -48,7 +49,7 @@ class AwardTile extends StatelessWidget {
         constraints: const BoxConstraints(maxHeight: 300),
         padding: const EdgeInsets.all(5),
         child: SingleChildScrollView(
-          child: Text(award.description),
+          child: Text(stringConversion(award.description, 'Award Missing')),
         ),
       ),
       trailing: Row(
@@ -113,72 +114,73 @@ class _AwardInputDialogState extends State<AwardInputDialog> {
             maxHeight: MediaQuery.of(context).size.height * 0.8),
         child: Form(
           key: _formKey,
-          child: SingleChildScrollView(child: Column(
-            children: [
-              ListTile(
-                title: const Text('Title *'),
-                subtitle: TextFormField(
-                  controller: _titleTextController,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please input the award title';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-              ListTile(
-                title: const Text('Issuer *'),
-                subtitle: TextFormField(
-                  controller: _issuerTextController,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please input issuer';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-              ListTile(
-                title: const Text('Issue Date'),
-                subtitle: MonthYearPickerFormField(
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please select issue date';
-                    }
-                    return null;
-                  },
-                  controller: _issueDateTextController,
-                ),
-              ),
-              ListTile(
-                title: const Text('Description'),
-                subtitle: GeminiDescriptionHelperInput(
-                  aspect: 'Award and Achievement',
-                  controller: _descriptionTextController,
-                  generatePromote: () {
-                    if (_titleTextController.text.isEmpty ||
-                        _issuerTextController.text.isEmpty ||
-                        _issueDateTextController.text.isEmpty ) {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) =>
-                            ConfirmationDialogBody(
-                          text:
-                              'Please provide all the information above before using generate function.',
-                          actionButtons: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                              },
-                              child: const Text('Cancel'),
-                            ),
-                          ],
-                        ),
-                      );
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                ListTile(
+                  title: const Text('Title *'),
+                  subtitle: TextFormField(
+                    controller: _titleTextController,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please input the award title';
+                      }
                       return null;
-                    }
-                    return '''Given the following information of award and achievement.
+                    },
+                  ),
+                ),
+                ListTile(
+                  title: const Text('Issuer *'),
+                  subtitle: TextFormField(
+                    controller: _issuerTextController,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please input issuer';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                ListTile(
+                  title: const Text('Issue Date'),
+                  subtitle: MonthYearPickerFormField(
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please select issue date';
+                      }
+                      return null;
+                    },
+                    controller: _issueDateTextController,
+                  ),
+                ),
+                ListTile(
+                  title: const Text('Description'),
+                  subtitle: GeminiDescriptionHelperInput(
+                    aspect: 'Award and Achievement',
+                    controller: _descriptionTextController,
+                    generatePromote: () {
+                      if (_titleTextController.text.isEmpty ||
+                          _issuerTextController.text.isEmpty ||
+                          _issueDateTextController.text.isEmpty) {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) =>
+                              ConfirmationDialogBody(
+                            text:
+                                'Please provide all the information above before using generate function.',
+                            actionButtons: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                                child: const Text('Cancel'),
+                              ),
+                            ],
+                          ),
+                        );
+                        return null;
+                      }
+                      return '''Given the following information of award and achievement.
                     Tile: ${_titleTextController.text}
                     Issuer: ${_issuerTextController.text}
                     Issue Date: ${_issueDateTextController.text}
@@ -186,17 +188,18 @@ class _AwardInputDialogState extends State<AwardInputDialog> {
                     2. Return in point form. 
                     3. Do not response with the provided information.
                     4. Do not response with introduction and closure phrase.''';
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please input the description';
-                    }
-                    return null;
-                  },
+                    },
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please input the description';
+                      }
+                      return null;
+                    },
+                  ),
                 ),
-              ),
-            ],
-          ),),
+              ],
+            ),
+          ),
         ),
       ),
       actions: [
@@ -218,8 +221,7 @@ class _AwardInputDialogState extends State<AwardInputDialog> {
                 issueDate: _issueDateTextController.text,
                 description: _descriptionTextController.text);
             if (addMode) {
-              Provider.of<DataProvider>(context, listen: false)
-                  .addAward(award);
+              Provider.of<DataProvider>(context, listen: false).addAward(award);
               Navigator.of(context).pop();
             } else {
               Provider.of<DataProvider>(context, listen: false)

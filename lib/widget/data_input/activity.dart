@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:personal_cv/model/activities.dart';
 import 'package:personal_cv/providers/data_provider.dart';
+import 'package:personal_cv/util/string_display.dart';
 import 'package:personal_cv/widget/data_input/date_input.dart';
 import 'package:personal_cv/widget/dialog.dart';
 import 'package:personal_cv/widget/gemini.dart';
@@ -24,14 +25,15 @@ class ActivityTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            activity.title,
+            stringConversion(activity.title, 'Title Missing'),
             style: Theme.of(context).textTheme.titleLarge,
           ),
           Text(
-            activity.location,
+            stringConversion(activity.location, 'Location Missing'),
             style: Theme.of(context).textTheme.bodyLarge,
           ),
-          Text('${activity.startDate}, ${activity.duration}',
+          Text(
+              '${stringConversion(activity.startDate, 'Start Date Missing')}, ${stringConversion(activity.duration, 'Duration Missing')}',
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium
@@ -48,7 +50,9 @@ class ActivityTile extends StatelessWidget {
         constraints: const BoxConstraints(maxHeight: 300),
         padding: const EdgeInsets.all(5),
         child: SingleChildScrollView(
-          child: Text(activity.description),
+          child: Text(
+            stringConversion(activity.description, 'Description Missing'),
+          ),
         ),
       ),
       trailing: Row(
@@ -115,85 +119,86 @@ class _ActivityInputDialogState extends State<ActivityInputDialog> {
             maxHeight: MediaQuery.of(context).size.height * 0.8),
         child: Form(
           key: _formKey,
-          child: SingleChildScrollView(child: Column(
-            children: [
-              ListTile(
-                title: const Text('Title *'),
-                subtitle: TextFormField(
-                  controller: _titleTextController,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please input the activity title';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-              ListTile(
-                title: const Text('Location *'),
-                subtitle: TextFormField(
-                  controller: _locationTextController,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please input location';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-              ListTile(
-                title: const Text('Start Date'),
-                subtitle: MonthYearPickerFormField(
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please start date';
-                    }
-                    return null;
-                  },
-                  controller: _startDateTextController,
-                ),
-              ),
-              ListTile(
-                title: const Text('Duration'),
-                subtitle: TextFormField(
-                  controller: _durationTextController,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please input duration';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-              ListTile(
-                title: const Text('Description'),
-                subtitle: GeminiDescriptionHelperInput(
-                  aspect: 'Activity',
-                  controller: _descriptionTextController,
-                  generatePromote: () {
-                    if (_titleTextController.text.isEmpty ||
-                        _locationTextController.text.isEmpty ||
-                        _startDateTextController.text.isEmpty ||
-                        _durationTextController.text.isEmpty) {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) =>
-                            ConfirmationDialogBody(
-                          text:
-                              'Please provide all the information above before using generate function.',
-                          actionButtons: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                              },
-                              child: const Text('Cancel'),
-                            ),
-                          ],
-                        ),
-                      );
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                ListTile(
+                  title: const Text('Title *'),
+                  subtitle: TextFormField(
+                    controller: _titleTextController,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please input the activity title';
+                      }
                       return null;
-                    }
-                    return '''Given the following information.
+                    },
+                  ),
+                ),
+                ListTile(
+                  title: const Text('Location *'),
+                  subtitle: TextFormField(
+                    controller: _locationTextController,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please input location';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                ListTile(
+                  title: const Text('Start Date'),
+                  subtitle: MonthYearPickerFormField(
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please start date';
+                      }
+                      return null;
+                    },
+                    controller: _startDateTextController,
+                  ),
+                ),
+                ListTile(
+                  title: const Text('Duration'),
+                  subtitle: TextFormField(
+                    controller: _durationTextController,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please input duration';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                ListTile(
+                  title: const Text('Description'),
+                  subtitle: GeminiDescriptionHelperInput(
+                    aspect: 'Activity',
+                    controller: _descriptionTextController,
+                    generatePromote: () {
+                      if (_titleTextController.text.isEmpty ||
+                          _locationTextController.text.isEmpty ||
+                          _startDateTextController.text.isEmpty ||
+                          _durationTextController.text.isEmpty) {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) =>
+                              ConfirmationDialogBody(
+                            text:
+                                'Please provide all the information above before using generate function.',
+                            actionButtons: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                                child: const Text('Cancel'),
+                              ),
+                            ],
+                          ),
+                        );
+                        return null;
+                      }
+                      return '''Given the following information.
                     Tile: ${_titleTextController.text}
                     Location: ${_locationTextController.text}
                     Start Date: ${_startDateTextController.text}
@@ -202,17 +207,18 @@ class _ActivityInputDialogState extends State<ActivityInputDialog> {
                     2. Return in point form. 
                     3. Do not response with the provided information.
                     4. Do not response with introduction and closure phrase.''';
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please input the description';
-                    }
-                    return null;
-                  },
+                    },
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please input the description';
+                      }
+                      return null;
+                    },
+                  ),
                 ),
-              ),
-            ],
-          ),),
+              ],
+            ),
+          ),
         ),
       ),
       actions: [

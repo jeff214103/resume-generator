@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:personal_cv/model/skill.dart';
 import 'package:personal_cv/model/workexp.dart';
 import 'package:personal_cv/providers/data_provider.dart';
+import 'package:personal_cv/util/string_display.dart';
 import 'package:personal_cv/widget/data_input/array_input.dart';
 import 'package:personal_cv/widget/data_input/date_input.dart';
 import 'package:personal_cv/widget/dialog.dart';
@@ -26,24 +27,26 @@ class WorkExperienceTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            workExperience.title,
+            stringConversion(workExperience.title, 'Title Missing'),
             style: Theme.of(context).textTheme.titleLarge,
           ),
           Text(
-            workExperience.companyName,
+            stringConversion(workExperience.companyName, 'Company Missing'),
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           Text(
-            workExperience.employmentType,
+            stringConversion(
+                workExperience.employmentType, 'Employment Type Missing'),
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          Text('${workExperience.startDate} - ${workExperience.endDate}',
+          Text(
+              '${stringConversion(workExperience.startDate, 'Start Date Missing')} - ${stringConversion(workExperience.endDate, 'End Date Missing')}',
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium
                   ?.copyWith(height: 1.3, letterSpacing: 1.2)),
           Text(
-            workExperience.location,
+            stringConversion(workExperience.location, 'Location Missing'),
             style: Theme.of(context)
                 .textTheme
                 .bodyMedium

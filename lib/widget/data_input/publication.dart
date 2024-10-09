@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:personal_cv/model/publication.dart';
 import 'package:personal_cv/providers/data_provider.dart';
+import 'package:personal_cv/util/string_display.dart';
 import 'package:personal_cv/widget/data_input/date_input.dart';
 import 'package:personal_cv/widget/dialog.dart';
 import 'package:personal_cv/widget/gemini.dart';
@@ -24,14 +25,14 @@ class PublicationTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            publication.title,
+            stringConversion(publication.title, 'Title Missing'),
             style: Theme.of(context).textTheme.titleLarge,
           ),
           Text(
-            publication.publication,
+            stringConversion(publication.publication, 'Publication Missing'),
             style: Theme.of(context).textTheme.bodyLarge,
           ),
-          Text(publication.date,
+          Text(stringConversion(publication.date, 'Date Missing'),
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium
@@ -85,9 +86,9 @@ class _PublicationInputDialogState extends State<PublicationInputDialog> {
   bool addMode = true;
 
   final TextEditingController _titleTextController = TextEditingController();
-  final TextEditingController _publicationTextController = TextEditingController();
-  final TextEditingController _dateTextController =
+  final TextEditingController _publicationTextController =
       TextEditingController();
+  final TextEditingController _dateTextController = TextEditingController();
   final TextEditingController _descriptionTextController =
       TextEditingController();
 
@@ -113,72 +114,73 @@ class _PublicationInputDialogState extends State<PublicationInputDialog> {
             maxHeight: MediaQuery.of(context).size.height * 0.8),
         child: Form(
           key: _formKey,
-          child: SingleChildScrollView(child: Column(
-            children: [
-              ListTile(
-                title: const Text('Title *'),
-                subtitle: TextFormField(
-                  controller: _titleTextController,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please input the publication title';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-              ListTile(
-                title: const Text('Publication *'),
-                subtitle: TextFormField(
-                  controller: _publicationTextController,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please input publication';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-              ListTile(
-                title: const Text('Date *'),
-                subtitle: MonthYearPickerFormField(
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please select publication date';
-                    }
-                    return null;
-                  },
-                  controller: _dateTextController,
-                ),
-              ),
-              ListTile(
-                title: const Text('Description *'),
-                subtitle: GeminiDescriptionHelperInput(
-                  aspect: 'Publication',
-                  controller: _descriptionTextController,
-                  generatePromote: () {
-                    if (_titleTextController.text.isEmpty ||
-                        _publicationTextController.text.isEmpty ||
-                        _dateTextController.text.isEmpty ) {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) =>
-                            ConfirmationDialogBody(
-                          text:
-                              'Please provide all the information above before using generate function.',
-                          actionButtons: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                              },
-                              child: const Text('Cancel'),
-                            ),
-                          ],
-                        ),
-                      );
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                ListTile(
+                  title: const Text('Title *'),
+                  subtitle: TextFormField(
+                    controller: _titleTextController,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please input the publication title';
+                      }
                       return null;
-                    }
-                    return '''Given the following information of publication.
+                    },
+                  ),
+                ),
+                ListTile(
+                  title: const Text('Publication *'),
+                  subtitle: TextFormField(
+                    controller: _publicationTextController,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please input publication';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                ListTile(
+                  title: const Text('Date *'),
+                  subtitle: MonthYearPickerFormField(
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please select publication date';
+                      }
+                      return null;
+                    },
+                    controller: _dateTextController,
+                  ),
+                ),
+                ListTile(
+                  title: const Text('Description *'),
+                  subtitle: GeminiDescriptionHelperInput(
+                    aspect: 'Publication',
+                    controller: _descriptionTextController,
+                    generatePromote: () {
+                      if (_titleTextController.text.isEmpty ||
+                          _publicationTextController.text.isEmpty ||
+                          _dateTextController.text.isEmpty) {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) =>
+                              ConfirmationDialogBody(
+                            text:
+                                'Please provide all the information above before using generate function.',
+                            actionButtons: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                                child: const Text('Cancel'),
+                              ),
+                            ],
+                          ),
+                        );
+                        return null;
+                      }
+                      return '''Given the following information of publication.
                     Tile: ${_titleTextController.text}
                     Publication: ${_publicationTextController.text}
                     Publish date: ${_dateTextController.text}
@@ -186,17 +188,18 @@ class _PublicationInputDialogState extends State<PublicationInputDialog> {
                     2. Return in point form. 
                     3. Do not response with the provided information.
                     4. Do not response with introduction and closure phrase.''';
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please input the description';
-                    }
-                    return null;
-                  },
+                    },
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please input the description';
+                      }
+                      return null;
+                    },
+                  ),
                 ),
-              ),
-            ],
-          ),),
+              ],
+            ),
+          ),
         ),
       ),
       actions: [

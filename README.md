@@ -38,7 +38,7 @@ We welcome contributions from the community! If you'd like to contribute, please
 
 ## Roadmap
 - [X] Auomatic Input from Academic resume
-- [ ] Import Profile from Linkedin
+- [X] Import Profile from ~~Linkedin~~ All files
 - [ ] Auomatic Input from scanning reference letters
 - [ ] Automatic job web scraping
 - [ ] Generate resume word from Gemini

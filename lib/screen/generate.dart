@@ -297,11 +297,22 @@ class _GenerateRequirementFormState extends State<GenerateRequirementForm> {
                     shortcuts: (textController) {
                       return [
                         GeminiActionChip(
+                          filled: true,
+                          name: 'Cover Letter',
+                          tooltip: 'Write cover letter',
+                          onPressed: () {
+                            textController.text =
+                                '''Write a cover letter based on the requirement and background base on the following instruction.
+1. Use professional tone
+2. Limit to 500 words ''';
+                          },
+                        ),
+                        GeminiActionChip(
                           name: 'Rate',
                           tooltip: 'Give a rating to the generated result',
                           onPressed: () {
                             textController.text =
-                                '''Grade the resume based on the requirements.  Give comments on how to improve.''';
+                                '''Grade the document based on the requirements.  Give comments on how to improve.''';
                           },
                         ),
                         GeminiActionChip(

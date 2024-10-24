@@ -314,7 +314,12 @@ class _GeminiDescriptionHelperState
 
 class GeminiActionChip extends StatelessWidget {
   const GeminiActionChip(
-      {super.key, required this.name, this.tooltip, required this.onPressed});
+      {super.key,
+      required this.name,
+      this.tooltip,
+      required this.onPressed,
+      this.filled = false});
+  final bool filled;
   final String name;
   final String? tooltip;
   final void Function()? onPressed;
@@ -325,12 +330,19 @@ class GeminiActionChip extends StatelessWidget {
       padding: const EdgeInsets.all(2.0),
       child: Tooltip(
         message: tooltip,
-        child: ElevatedButton(
-          onPressed: onPressed,
-          child: Text(
-            name,
-          ),
-        ),
+        child: (filled)
+            ? FilledButton(
+                onPressed: onPressed,
+                child: Text(
+                  name,
+                ),
+              )
+            : ElevatedButton(
+                onPressed: onPressed,
+                child: Text(
+                  name,
+                ),
+              ),
       ),
     );
   }
@@ -426,6 +438,7 @@ class _GeminiChatWidgetState extends State<GeminiChatWidget> {
     super.initState();
 
     _chat = widget.chat;
+    _scrollDown();
   }
 
   void _scrollDown() {

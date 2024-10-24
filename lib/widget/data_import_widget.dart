@@ -65,6 +65,13 @@ class ImportDialog extends StatelessWidget {
                     .toList(),
               ),
             ),
+            Container(
+              padding: const EdgeInsets.only(top: 20, bottom: 5),
+              child: Text(
+                'Importing data will overwrite your existing data. Use this feature carefully.',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+            ),
             SizedBox(
               width: double.infinity,
               child: Row(

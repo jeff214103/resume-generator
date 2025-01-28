@@ -7,7 +7,7 @@ List<Map<String, dynamic>> items = [
     "header": "Welcome",
     "description":
         "The app provides you an easy platform for generating custom made resume content.",
-    "image": "assets/images/itdog.png"
+    "image": "assets/images/1.png"
   },
   {
     "id": 2,

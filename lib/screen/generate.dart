@@ -5,65 +5,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:personal_cv/providers/data_provider.dart';
 import 'package:personal_cv/screen/welcome.dart';
 import 'package:personal_cv/widget/gemini.dart';
-import 'package:personal_cv/widget/loading_hint.dart';
 import 'package:provider/provider.dart';
-
-Future<ChatSession> generateResume(
-    {required BuildContext context,
-    required String cvType,
-    required String requirement}) {
-  String prompt = '';
-  if (cvType == 'Job') {
-    prompt = '''The resume target is to apply job.
-    The requirements as the follows.
-    '$requirement'
-    Wait for my criteria in the next prompt before any action.
-  ''';
-  } else if (cvType == 'Academic') {
-    prompt = '''The resume target is for academic requirements.
-    The requirements as the follows.
-    '$requirement'
-    Wait for my criteria in the next prompt before any action.
-  ''';
-  } else {
-    throw Exception('Unsupported resume type');
-  }
-  GenerativeModel model = GenerativeModel(
-    model: Provider.of<DataProvider>(context, listen: false).geminiModel,
-    apiKey: Provider.of<DataProvider>(context, listen: false).geminiAPIKey,
-  );
-  ChatSession chat = model.startChat();
-  // return Future.value(chat);
-
-  return chat
-      .sendMessage(
-    Content.text(
-      '''
-You are writing a resume.  Before starting, understand the background by looking into the json.
-'${jsonEncode(Provider.of<DataProvider>(context, listen: false).backgroundInfo)}'
-Wait for my instruction in the next prompt before any action.
-            ''',
-    ),
-  )
-      .then((_) {
-    return chat.sendMessage(Content.text(prompt)).then((_) {
-      return chat.sendMessage(Content.text('''
-Finish writing your resume based on the following instruction
-1. Prioritize and highlight the background information fulfill the requirement
-2. Use the requirement keyword for the relvant background information elaboration
-3. Tailoring for the Role
-4. Everything base on given background information
-5. Highlighting Preferred Qualifications
-6. For work experience, write point in the format of "Accomplished [X] as measured by [Y], by doing [Z]."
-7. Quantify Achievements
-8. Use strong action verb
-9. One or two page length
-  ''')).then((_) {
-        return chat;
-      });
-    });
-  });
-}
 
 void _redirectTo(BuildContext context, Widget widget,
     {void Function(dynamic)? callback}) {
@@ -149,15 +91,24 @@ class GenerateRequirementForm extends StatefulWidget {
 class _GenerateRequirementFormState extends State<GenerateRequirementForm> {
   static const List<String> cvTypeOptions = ['Job', 'Academic'];
   String? _cvType;
-  bool? showGenerate = false;
-  bool? showResult = false;
+  bool _isLoading = false;
+  bool _hasError = false;
+  String _errorMessage = '';
+  String _loadingMessage = '';
 
   Future<ChatSession>? _chat;
 
   final TextEditingController _jobAdsController = TextEditingController();
   final TextEditingController _acadmicController = TextEditingController();
-
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final geminiResultKey = GlobalKey();
+
+  @override
+  void dispose() {
+    _jobAdsController.dispose();
+    _acadmicController.dispose();
+    super.dispose();
+  }
 
   void _scrollDown() {
     WidgetsBinding.instance.addPostFrameCallback((_) =>
@@ -166,175 +117,351 @@ class _GenerateRequirementFormState extends State<GenerateRequirementForm> {
             curve: Curves.easeInOut));
   }
 
+  void _resetForm() {
+    setState(() {
+      _cvType = null;
+      _jobAdsController.clear();
+      _acadmicController.clear();
+      _hasError = false;
+      _errorMessage = '';
+      _isLoading = false;
+      _loadingMessage = '';
+    });
+  }
+
+  Future<void> _generateResume() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = '';
+      _loadingMessage = '';
+    });
+
+    try {
+      String requirement;
+      if (_cvType == 'Job') {
+        requirement = _jobAdsController.text.trim();
+      } else if (_cvType == 'Academic') {
+        requirement = _acadmicController.text.trim();
+      } else {
+        throw Exception('Invalid resume type');
+      }
+
+      if (requirement.isEmpty) {
+        throw Exception('Please provide resume requirements');
+      }
+
+      final chat = await generateResume(
+        context: context,
+        cvType: _cvType!,
+        requirement: requirement,
+      );
+
+      setState(() {
+        _chat = Future.value(chat);
+        _isLoading = false;
+      });
+
+      _scrollDown();
+    } catch (e) {
+      setState(() {
+        _hasError = true;
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<ChatSession> generateResume(
+      {required BuildContext context,
+      required String cvType,
+      required String requirement}) {
+    // Local loading message tracking
+    void updateLoadingMessage(String message) {
+      setState(() {
+        _loadingMessage = message;
+      });
+    }
+
+    updateLoadingMessage('Initializing resume generation...');
+
+    String prompt = '';
+    if (cvType == 'Job') {
+      prompt = '''The resume target is to apply job.
+    The requirements as the follows.
+    '$requirement'
+    Wait for my criteria in the next prompt before any action.
+  ''';
+    } else if (cvType == 'Academic') {
+      prompt = '''The resume target is for academic requirements.
+    The requirements as the follows.
+    '$requirement'
+    Wait for my criteria in the next prompt before any action.
+  ''';
+    } else {
+      throw Exception('Unsupported resume type');
+    }
+
+    updateLoadingMessage('Connecting to AI model...');
+    GenerativeModel model = GenerativeModel(
+      model: Provider.of<DataProvider>(context, listen: false).geminiModel,
+      apiKey: Provider.of<DataProvider>(context, listen: false).geminiAPIKey,
+    );
+    ChatSession chat = model.startChat();
+
+    updateLoadingMessage('Loading background information...');
+    return chat
+        .sendMessage(
+      Content.text(
+        '''
+You are writing a resume.  Before starting, understand the background by looking into the json.
+'${jsonEncode(Provider.of<DataProvider>(context, listen: false).backgroundInfo)}'
+Wait for my instruction in the next prompt before any action.
+            ''',
+      ),
+    )
+        .then((_) {
+      updateLoadingMessage('Processing resume requirements...');
+      return chat.sendMessage(Content.text(prompt)).then((_) {
+        updateLoadingMessage('Generating tailored resume content...');
+        return chat.sendMessage(Content.text('''
+Finish writing your resume based on the following instruction
+1. Prioritize and highlight the background information fulfill the requirement
+2. Use the requirement keyword for the relvant background information elaboration
+3. Tailoring for the Role
+4. Everything base on given background information
+5. Highlighting Preferred Qualifications
+6. For work experience, write point in the format of "Accomplished [X] as measured by [Y], by doing [Z]."
+7. Quantify Achievements
+8. Use strong action verb
+9. One or two page length
+10. Order each items in the category from most recent to least recent
+  ''')).then((_) {
+          updateLoadingMessage('Resume generation complete');
+          return chat;
+        });
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        ListTile(
-          title: const Text('Resume for *'),
-          subtitle: DropdownButtonFormField(
-            value: _cvType,
-            hint: const Text(
-              'Please Select',
-            ),
-            isExpanded: true,
-            onChanged: (value) {
-              setState(() {
-                _cvType = value;
-                _jobAdsController.text = '';
-                _acadmicController.text = '';
-              });
-            },
-            validator: (String? value) {
-              if (value == null || value.isEmpty) {
-                return "Need to choose employment type";
-              }
-              return null;
-            },
-            items: cvTypeOptions.map(
-              (String val) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Form(
+      key: _formKey,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DropdownButtonFormField<String>(
+              value: _cvType,
+              decoration: InputDecoration(
+                labelText: 'Resume Type *',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                filled: true,
+                fillColor: colorScheme.surface,
+              ),
+              hint: const Text('Select Resume Type'),
+              isExpanded: true,
+              onChanged: _isLoading
+                  ? null
+                  : (value) {
+                      setState(() {
+                        _cvType = value;
+                        _jobAdsController.clear();
+                        _acadmicController.clear();
+                      });
+                    },
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please select a resume type';
+                }
+                return null;
+              },
+              items: cvTypeOptions.map((String val) {
                 return DropdownMenuItem(
                   value: val,
-                  child: Text(
-                    val,
-                  ),
+                  child: Text(val),
                 );
-              },
-            ).toList(),
-          ),
-        ),
-        if (_cvType == 'Job')
-          ListTile(
-            title: const Text('Copy Jobs Ads Here *'),
-            subtitle: TextField(
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.multiline,
-              maxLines: 10,
-              minLines: 5,
-              onChanged: (value) {
-                if (value.isEmpty && showGenerate == true) {
-                  setState(() {
-                    showGenerate = false;
-                  });
-                } else if (value.isNotEmpty && showGenerate == false) {
-                  setState(() {
-                    showGenerate = true;
-                  });
-                }
-              },
-              controller: _jobAdsController,
+              }).toList(),
             ),
-          ),
-        if (_cvType == 'Academic')
-          ListTile(
-            title: const Text('Purpose *'),
-            subtitle: TextField(
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.multiline,
-              maxLines: 10,
-              minLines: 5,
-              controller: _acadmicController,
-              onChanged: (value) {
-                if (value.isEmpty && showGenerate == true) {
-                  setState(() {
-                    showGenerate = false;
-                  });
-                } else if (value.isNotEmpty && showGenerate == false) {
-                  setState(() {
-                    showGenerate = true;
-                  });
-                }
-              },
-            ),
-          ),
-        if (showGenerate == true)
-          FilledButton(
-            onPressed: () {
-              String requirement;
-              if (_cvType == 'Job') {
-                requirement = _jobAdsController.text;
-              } else if (_cvType == 'Academic') {
-                requirement = _acadmicController.text;
-              } else {
-                return;
-              }
-              setState(() {
-                _chat = generateResume(
-                    context: context,
-                    cvType: _cvType!,
-                    requirement: requirement);
-                _scrollDown();
-              });
-            },
-            child: const Text('Generate'),
-          ),
-        if (_chat != null)
-          SizedBox(
-            width: MediaQuery.of(context).size.width * 0.8,
-            height: MediaQuery.of(context).size.height * 0.8,
-            key: geminiResultKey,
-            child: FutureBuilder<ChatSession>(
-              future: _chat,
-              builder:
-                  (BuildContext context, AsyncSnapshot<ChatSession> snapshot) {
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text("Error: ${snapshot.error.toString()}"),
-                  );
-                } else if (snapshot.connectionState == ConnectionState.done) {
-                  if (snapshot.data?.history == null ||
-                      snapshot.hasData == false) {
-                    return const Center(
-                      child: Text('Empty response'),
-                    );
+            const SizedBox(height: 16),
+            if (_cvType == 'Job')
+              TextFormField(
+                controller: _jobAdsController,
+                decoration: InputDecoration(
+                  labelText: 'Job Description *',
+                  hintText: 'Paste job advertisement details',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  filled: true,
+                  fillColor: colorScheme.surface,
+                ),
+                keyboardType: TextInputType.multiline,
+                maxLines: 10,
+                minLines: 5,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please provide job description';
                   }
-                  return GeminiChatWidget(
-                    chat: snapshot.data!,
-                    shortcuts: (textController) {
-                      return [
-                        GeminiActionChip(
-                          filled: true,
-                          name: 'Cover Letter',
-                          tooltip: 'Write cover letter',
-                          onPressed: () {
-                            textController.text =
-                                '''Write a cover letter based on the requirement and background base on the following instruction.
-1. Use professional tone
-2. Limit to 500 words ''';
-                          },
-                        ),
-                        GeminiActionChip(
-                          name: 'Rate',
-                          tooltip: 'Give a rating to the generated result',
-                          onPressed: () {
-                            textController.text =
-                                '''Grade the document based on the requirements.  Give comments on how to improve.''';
-                          },
-                        ),
-                        GeminiActionChip(
-                          name: 'Simulate',
-                          tooltip: 'Try to simulate as a reviewer',
-                          onPressed: () {
-                            textController.text =
-                                '''If you are the party looking for the person. Do you think it is a good fit.''';
-                          },
-                        ),
-                      ];
-                    },
-                  );
-                } else {
-                  return const LoadingHint(
-                      text:
-                          'Generating the information. It may takes a while..');
-                }
-              },
+                  return null;
+                },
+                enabled: !_isLoading,
+              ),
+            if (_cvType == 'Academic')
+              TextFormField(
+                controller: _acadmicController,
+                decoration: InputDecoration(
+                  labelText: 'Academic Purpose *',
+                  hintText: 'Describe academic requirements',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  filled: true,
+                  fillColor: colorScheme.surface,
+                ),
+                keyboardType: TextInputType.multiline,
+                maxLines: 10,
+                minLines: 5,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please provide academic purpose';
+                  }
+                  return null;
+                },
+                enabled: !_isLoading,
+              ),
+            const SizedBox(height: 16),
+            if (_hasError)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  _errorMessage,
+                  style: TextStyle(color: colorScheme.onErrorContainer),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: _isLoading ? null : _generateResume,
+              child: _isLoading
+                  ? const CircularProgressIndicator()
+                  : const Text('Generate'),
             ),
-          )
-      ],
+            const SizedBox(height: 16),
+            if (_isLoading)
+              LinearProgressIndicator(
+                backgroundColor: colorScheme.surfaceContainerHighest,
+                color: colorScheme.primary,
+              ),
+            if (_chat != null)
+              SizedBox(
+                width: MediaQuery.of(context).size.width * 0.9,
+                height: MediaQuery.of(context).size.height * 0.8,
+                key: geminiResultKey,
+                child: FutureBuilder<ChatSession>(
+                  future: _chat,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    } else if (snapshot.hasError) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: colorScheme.error,
+                              size: 60,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Error Generating Resume',
+                              style: textTheme.titleLarge,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              snapshot.error.toString(),
+                              style: textTheme.bodyMedium,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _resetForm,
+                              child: const Text('Try Again'),
+                            ),
+                          ],
+                        ),
+                      );
+                    } else if (snapshot.hasData) {
+                      return GeminiChatWidget(
+                        chat: snapshot.data!,
+                        shortcuts: (textController) {
+                          return [
+                            GeminiActionChip(
+                              filled: true,
+                              name: 'Cover Letter',
+                              tooltip: 'Write cover letter',
+                              onPressed: () {
+                                textController.text =
+                                    '''Write a cover letter based on the requirement and background base on the following instruction.
+1. Use professional tone
+2. Limit to 500 words
+3. Highlight the key points
+4. Use bullet points''';
+                              },
+                            ),
+                            GeminiActionChip(
+                              name: 'Rate',
+                              tooltip: 'Give a rating to the generated result',
+                              onPressed: () {
+                                textController.text =
+                                    '''Grade the document based on the requirements.  Give comments on how to improve.''';
+                              },
+                            ),
+                            GeminiActionChip(
+                              name: 'Simulate',
+                              tooltip: 'Try to simulate as a reviewer',
+                              onPressed: () {
+                                textController.text =
+                                    '''If you are the party looking for the person. Do you think it is a good fit.''';
+                              },
+                            ),
+                          ];
+                        },
+                      );
+                    } else {
+                      return const Center(
+                        child: Text('No resume generated'),
+                      );
+                    }
+                  },
+                ),
+              ),
+            if (_isLoading)
+              Text(
+                _loadingMessage,
+                style: TextStyle(color: colorScheme.onSurfaceVariant),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

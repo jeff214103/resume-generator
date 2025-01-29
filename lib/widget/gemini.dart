@@ -34,6 +34,7 @@ class _GeminiDescriptionHelperState
   late final ChatSession _chat;
   final geminiResultKey = GlobalKey();
   Future<GenerateContentResponse>? response;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -67,10 +68,17 @@ class _GeminiDescriptionHelperState
   }
 
   void _scrollDown() {
-    WidgetsBinding.instance.addPostFrameCallback((_) =>
-        Scrollable.ensureVisible(geminiResultKey.currentContext!,
-            duration: const Duration(milliseconds: 1000),
-            curve: Curves.easeInOut));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients && mounted) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(
+            milliseconds: 750,
+          ),
+          curve: Curves.easeOutCirc,
+        );
+      }
+    });
   }
 
   @override
@@ -79,7 +87,7 @@ class _GeminiDescriptionHelperState
       mainAxisSize: MainAxisSize.min,
       children: [
         SingleChildScrollView(
-          controller: ScrollController(),
+          controller: _scrollController,
           child: ConstrainedBox(
             constraints: BoxConstraints(
                 maxHeight: MediaQuery.of(context).size.height * 0.3),
@@ -443,13 +451,17 @@ class _GeminiChatWidgetState extends State<GeminiChatWidget> {
 
   void _scrollDown() {
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(
-          milliseconds: 750,
-        ),
-        curve: Curves.easeOutCirc,
-      ),
+      (_) {
+        if (_scrollController.hasClients && mounted) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(
+              milliseconds: 750,
+            ),
+            curve: Curves.easeOutCirc,
+          );
+        }
+      },
     );
   }
 
@@ -660,7 +672,26 @@ class _MessageUtilState extends State<MessageUtil> {
     return Column(
       children: [
         (_viewRaw == false)
-            ? MarkdownBody(selectable: true, data: widget.text)
+            ? SelectionArea(
+                // new
+                child: MarkdownBody(
+                  data: widget.text,
+                  styleSheet: MarkdownStyleSheet(
+                    h1: TextStyle(
+                        fontSize: 24,
+                        color: Theme.of(context).colorScheme.primary),
+                    code: TextStyle(
+                        fontFamily: 'monospace',
+                        color: Theme.of(context).colorScheme.onSurface),
+                    codeblockDecoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(4)),
+                    // Add more styles as needed
+                  ),
+                ),
+              )
             : SelectableText(widget.text),
         if (widget.needBtn)
           SizedBox(

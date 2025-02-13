@@ -93,6 +93,7 @@ class _SettingPageState extends State<SettingPage> {
                     items: [
                       'gemini-1.5-flash',
                       'gemini-1.5-pro',
+                      'gemini-2.0-flash',
                     ].map(
                       (String val) {
                         return DropdownMenuItem(

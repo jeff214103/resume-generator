@@ -621,28 +621,43 @@ class DashboardLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title.toUpperCase(),
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+          Semantics(
+            header: true,
+            child: Text(
+              title.toUpperCase(),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+            ),
           ),
-          const SizedBox(
-            height: 10,
+          const SizedBox(height: 10),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final bool isSmallScreen = constraints.maxWidth < 400;
+              final int crossAxisCount = (constraints.maxWidth < 600
+                  ? 2
+                  : (constraints.maxWidth / 200).floor());
+              final double spacing = isSmallScreen
+                  ? 8.0
+                  : (constraints.maxWidth < 600 ? 10.0 : 40.0);
+              final double childAspectRatio = isSmallScreen ? 1.2 : 1.0;
+
+              return GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: crossAxisCount,
+                childAspectRatio: childAspectRatio,
+                crossAxisSpacing: spacing,
+                mainAxisSpacing: spacing,
+                children: widgets,
+              );
+            },
           ),
-          GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: MediaQuery.of(context).size.width ~/ 200.0,
-              childAspectRatio: 1,
-              crossAxisSpacing: 40,
-              mainAxisSpacing: 30,
-              children: widgets),
         ],
       ),
     );
@@ -650,13 +665,14 @@ class DashboardLayout extends StatelessWidget {
 }
 
 class DashboardBadgeCard extends StatelessWidget {
-  const DashboardBadgeCard(
-      {super.key,
-      required this.title,
-      required this.label,
-      required this.iconData,
-      required this.background,
-      required this.onTap});
+  const DashboardBadgeCard({
+    super.key,
+    required this.title,
+    required this.label,
+    required this.iconData,
+    required this.background,
+    required this.onTap,
+  });
   final String title;
   final Widget label;
   final IconData iconData;
@@ -665,18 +681,22 @@ class DashboardBadgeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Badge(
-      backgroundColor: Theme.of(context).colorScheme.primary,
-      textColor: Theme.of(context).colorScheme.onPrimary,
-      label: label,
-      child: SizedBox(
-        width: double.infinity,
-        height: double.infinity,
-        child: DashboardCard(
-          background: background,
-          title: title,
-          iconData: iconData,
-          onTap: onTap,
+    return Semantics(
+      container: true,
+      label: '$title badge, ${label is Text ? (label as Text).data : ""} items',
+      child: Badge(
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        textColor: Theme.of(context).colorScheme.onPrimary,
+        label: label,
+        child: SizedBox(
+          width: double.infinity,
+          height: double.infinity,
+          child: DashboardCard(
+            background: background,
+            title: title,
+            iconData: iconData,
+            onTap: onTap,
+          ),
         ),
       ),
     );
@@ -684,12 +704,13 @@ class DashboardBadgeCard extends StatelessWidget {
 }
 
 class DashboardCard extends StatelessWidget {
-  const DashboardCard(
-      {super.key,
-      required this.title,
-      required this.iconData,
-      required this.background,
-      required this.onTap});
+  const DashboardCard({
+    super.key,
+    required this.title,
+    required this.iconData,
+    required this.background,
+    required this.onTap,
+  });
   final String title;
   final IconData iconData;
   final Color background;
@@ -697,39 +718,57 @@ class DashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
+    return Semantics(
+      button: true,
+      label: title,
+      child: Container(
+        decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-                offset: const Offset(0, 5),
-                color: Theme.of(context).shadowColor.withOpacity(.2),
-                spreadRadius: 2,
-                blurRadius: 5)
-          ]),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: onTap,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: background,
-                    shape: BoxShape.circle,
+              offset: const Offset(0, 5),
+              color: Theme.of(context).shadowColor.withValues(alpha: .2),
+              spreadRadius: 2,
+              blurRadius: 5,
+            )
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 100),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: background,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      iconData,
+                      color: Colors.white,
+                      size: 28,
+                    ),
                   ),
-                  child: Icon(iconData, color: Colors.white)),
-              const SizedBox(height: 8),
-              Text(
-                title.toUpperCase(),
-                style: Theme.of(context).textTheme.titleMedium,
-                textAlign: TextAlign.center,
-              )
-            ],
+                  const SizedBox(height: 8),
+                  Text(
+                    title.toUpperCase(),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                    textAlign: TextAlign.center,
+                  )
+                ],
+              ),
+            ),
           ),
         ),
       ),

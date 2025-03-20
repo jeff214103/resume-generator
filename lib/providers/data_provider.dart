@@ -36,6 +36,13 @@ class DataProvider extends ChangeNotifier {
   late String _geminiModel;
   String get geminiModel => _geminiModel;
 
+  static const List<String> _availableModels = [
+    'gemini-1.5-flash',
+    'gemini-2.0-flash',
+  ];
+
+  List<String> get availableModels => _availableModels;
+
   DataProvider() {
     _initialized = false;
   }
@@ -45,6 +52,9 @@ class DataProvider extends ChangeNotifier {
       const List<String> keys = BackgroundInfo.keys;
       _geminiAPIKey = (await storage.read(key: 'gemini-api-key')) ?? '';
       _geminiModel = (await storage.read(key: 'gemini-model')) ?? '';
+      if (availableModels.contains(_geminiModel) == false) {
+        _geminiModel = availableModels.first;
+      }
       _backgroundInfo =
           await Future.wait(keys.map((key) => storage.read(key: key)))
               .then((values) {

@@ -25,7 +25,7 @@ class _SettingPageState extends State<SettingPage> {
     super.initState();
     _geminiAPITextController.text = widget.dataProvider.geminiAPIKey;
     _geminiModel = (widget.dataProvider.geminiModel.isEmpty)
-        ? 'gemini-1.5-pro'
+        ? widget.dataProvider.availableModels.first
         : widget.dataProvider.geminiModel;
   }
 
@@ -90,11 +90,7 @@ class _SettingPageState extends State<SettingPage> {
                       }
                       return null;
                     },
-                    items: [
-                      'gemini-1.5-flash',
-                      'gemini-1.5-pro',
-                      'gemini-2.0-flash',
-                    ].map(
+                    items: widget.dataProvider.availableModels.map(
                       (String val) {
                         return DropdownMenuItem(
                           value: val,

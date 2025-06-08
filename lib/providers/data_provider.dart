@@ -4,7 +4,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:google_generative_ai/google_generative_ai.dart' as google;
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_ai/firebase_ai.dart';
 import 'package:personal_cv/model/academic.dart';
 import 'package:personal_cv/model/activities.dart';
 import 'package:personal_cv/model/award.dart';
@@ -15,7 +16,6 @@ import 'package:personal_cv/model/publication.dart';
 import 'package:personal_cv/model/skill.dart';
 import 'package:personal_cv/model/workexp.dart';
 import 'package:personal_cv/util/gemini_helper.dart';
-
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 
@@ -30,14 +30,10 @@ class DataProvider extends ChangeNotifier {
   late BackgroundInfo _backgroundInfo;
   BackgroundInfo get backgroundInfo => _backgroundInfo;
 
-  late String _geminiAPIKey;
-  String get geminiAPIKey => _geminiAPIKey;
-
   late String _geminiModel;
   String get geminiModel => _geminiModel;
 
   static const List<String> _availableModels = [
-    'gemini-1.5-flash',
     'gemini-2.0-flash',
   ];
 
@@ -50,9 +46,8 @@ class DataProvider extends ChangeNotifier {
   Future<void> init() async {
     if (_initialized == false) {
       const List<String> keys = BackgroundInfo.keys;
-      _geminiAPIKey = (await storage.read(key: 'gemini-api-key')) ?? '';
       _geminiModel = (await storage.read(key: 'gemini-model')) ?? '';
-      if (availableModels.contains(_geminiModel) == false) {
+      if (_geminiModel != '' && availableModels.contains(_geminiModel) == false) {
         _geminiModel = availableModels.first;
       }
       _backgroundInfo =
@@ -80,10 +75,17 @@ class DataProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> initGemini() async {
+    if (_geminiModel == '') {
+      _geminiModel = availableModels.first;
+      print("Set to $_geminiModel");
+      return geminiSetting("", _geminiModel);
+    }
+  }
   Future<void> geminiSetting(String apiKey, String model) async {
-    _geminiAPIKey = apiKey;
+    // _geminiAPIKey = apiKey;
     _geminiModel = model;
-    await storage.write(key: 'gemini-api-key', value: _geminiAPIKey);
+    // await storage.write(key: 'gemini-api-key', value: _geminiAPIKey);
     await storage.write(key: 'gemini-model', value: _geminiModel);
     notifyListeners();
   }
@@ -413,8 +415,8 @@ class DataProvider extends ChangeNotifier {
               text: 'Loading and analyzing the information');
         });
     return pickAndConvertFilesToDataParts(context).then((dataParts) {
-      final Iterable<google.Part> newList = List.from([
-        google.TextPart('''
+      final Iterable<Part> newList = List.from([
+        TextPart('''
 Retrieve the following information of the following aspect, each component an element inside array. 
 If the element information not found, fill with empty string.
 If the aspect not found, return with empty array.
@@ -496,9 +498,14 @@ Return the result using this JSON schema:
       if (dataParts.isEmpty) {
         throw Exception('No files selected');
       }
+
+      FirebaseAnalytics.instance.logEvent(name : 'import', parameters: {
+        'files': dataParts.length
+      });
+
       return geminiResponse(
               context: context,
-              prompt: [google.Content.multi(newList)],
+              prompt: [Content.multi(newList)],
               responseMimeType: 'application/json')
           .then((response) {
         if (response.text == null) {

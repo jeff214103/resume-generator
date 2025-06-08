@@ -1,7 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:firebase_ai/firebase_ai.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:personal_cv/model/academic.dart';
 import 'package:personal_cv/model/course.dart';
 import 'package:personal_cv/model/skill.dart';
@@ -175,7 +176,7 @@ Retrieve the following information and return in strict json format without othe
 6. Skills (key: skills) //The list of skills learnt from the courses
 7. Description (key: description) // Generate a report for the study, what and how it is done.
 
-Strict json format as follows is needed.
+Strictly return single json format as follows is needed.
 {
   "school": "",
   "degree": "",
@@ -192,6 +193,10 @@ Strict json format as follows is needed.
                       if (dataParts.isEmpty) {
                         throw Exception('No files selected');
                       }
+                      FirebaseAnalytics.instance.logEvent(
+                        name: 'academic_cert',
+                      );
+
                       return geminiResponse(
                               context: context,
                               prompt: [Content.multi(newList)],
@@ -202,8 +207,12 @@ Strict json format as follows is needed.
                         }
                         Navigator.of(context).pop();
                         try {
-                          Map<String, dynamic> data =
-                              jsonDecode(response.text!);
+                          String result = response.text!;
+                          if (result[0] == '[' &&
+                              result[result.length - 1] == ']') {
+                            result = result.substring(1, result.length - 1);
+                          }
+                          Map<String, dynamic> data = jsonDecode(result);
                           _schoolTextController.text =
                               data['school'] ?? 'Not found';
                           _degreeTextController.text =

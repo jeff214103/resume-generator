@@ -1,11 +1,13 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:firebase_ai/firebase_ai.dart';
 import 'package:personal_cv/providers/data_provider.dart';
 import 'package:personal_cv/screen/welcome.dart';
 import 'package:personal_cv/widget/gemini.dart';
+import 'package:personal_cv/util/gemini_helper.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 
 void _redirectTo(BuildContext context, Widget widget,
     {void Function(dynamic)? callback}) {
@@ -187,6 +189,11 @@ class _GenerateRequirementFormState extends State<GenerateRequirementForm> {
       });
     }
 
+    FirebaseAnalytics.instance.logEvent(name: 'generate_resume', parameters: {
+      'cvType': cvType,
+      'requirement': requirement,
+    });
+
     updateLoadingMessage('Initializing resume generation...');
 
     String prompt = '';
@@ -207,10 +214,8 @@ class _GenerateRequirementFormState extends State<GenerateRequirementForm> {
     }
 
     updateLoadingMessage('Connecting to AI model...');
-    GenerativeModel model = GenerativeModel(
-      model: Provider.of<DataProvider>(context, listen: false).geminiModel,
-      apiKey: Provider.of<DataProvider>(context, listen: false).geminiAPIKey,
-    );
+    GenerativeModel model = getFirebaseAI().generativeModel(
+        model: Provider.of<DataProvider>(context, listen: false).geminiModel);
     ChatSession chat = model.startChat();
 
     updateLoadingMessage('Loading background information...');

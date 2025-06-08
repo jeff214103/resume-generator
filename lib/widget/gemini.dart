@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:firebase_ai/firebase_ai.dart';
 import 'package:personal_cv/providers/data_provider.dart';
 import 'package:personal_cv/widget/dialog.dart';
 import 'package:personal_cv/widget/loading_hint.dart';
 import 'package:provider/provider.dart';
+import 'package:personal_cv/util/gemini_helper.dart';
 
 class GeminiDescriptionHelperInput extends StatefulWidget {
   final String aspect;
@@ -39,10 +40,7 @@ class _GeminiDescriptionHelperState
   @override
   void initState() {
     super.initState();
-    _model = GenerativeModel(
-      model: Provider.of<DataProvider>(context, listen: false).geminiModel,
-      apiKey: Provider.of<DataProvider>(context, listen: false).geminiAPIKey,
-    );
+    _model = getFirebaseAI().generativeModel(model:  Provider.of<DataProvider>(context, listen: false).geminiModel);
     _chat = _model.startChat();
   }
 

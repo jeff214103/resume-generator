@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:personal_cv/providers/data_provider.dart';
 import 'package:personal_cv/widget/dialog.dart';
-import 'package:url_launcher/link.dart';
+// import 'package:url_launcher/link.dart';
 
 class SettingPage extends StatefulWidget {
   final DataProvider dataProvider;
@@ -23,7 +23,6 @@ class _SettingPageState extends State<SettingPage> {
   @override
   void initState() {
     super.initState();
-    _geminiAPITextController.text = widget.dataProvider.geminiAPIKey;
     _geminiModel = (widget.dataProvider.geminiModel.isEmpty)
         ? widget.dataProvider.availableModels.first
         : widget.dataProvider.geminiModel;
@@ -40,37 +39,37 @@ class _SettingPageState extends State<SettingPage> {
             key: _formKey,
             child: ListView(
               children: [
-                const Text(
-                  'To use the applciation, you\'ll need an Gemini API key. '
-                  'If you don\'t already have one, '
-                  'create a key in Google AI Studio.',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Center(
-                  child: Link(
-                    uri: Uri.https('makersuite.google.com', '/app/apikey'),
-                    target: LinkTarget.blank,
-                    builder: (context, followLink) => TextButton(
-                      onPressed: followLink,
-                      child: const Text('Get an API Key'),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ListTile(
-                  title: const Text('Gemini API Key'),
-                  subtitle: TextFormField(
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please input the gemini API key';
-                      }
-                      return null;
-                    },
-                    controller: _geminiAPITextController,
-                  ),
-                ),
-                const SizedBox(height: 8),
+                // const Text(
+                //   'To use the applciation, you\'ll need an Gemini API key. '
+                //   'If you don\'t already have one, '
+                //   'create a key in Google AI Studio.',
+                //   textAlign: TextAlign.center,
+                // ),
+                // const SizedBox(height: 8),
+                // Center(
+                //   child: Link(
+                //     uri: Uri.https('makersuite.google.com', '/app/apikey'),
+                //     target: LinkTarget.blank,
+                //     builder: (context, followLink) => TextButton(
+                //       onPressed: followLink,
+                //       child: const Text('Get an API Key'),
+                //     ),
+                //   ),
+                // ),
+                // const SizedBox(height: 8),
+                // ListTile(
+                //   title: const Text('Gemini API Key'),
+                //   subtitle: TextFormField(
+                //     validator: (value) {
+                //       if (value == null || value.isEmpty) {
+                //         return 'Please input the gemini API key';
+                //       }
+                //       return null;
+                //     },
+                //     controller: _geminiAPITextController,
+                //   ),
+                // ),
+                // const SizedBox(height: 8),
                 ListTile(
                   title: const Text('Gemini Model'),
                   subtitle: DropdownButtonFormField(
@@ -139,8 +138,7 @@ class _SettingPageState extends State<SettingPage> {
                     child: const Text('Submit'),
                   ),
                 ),
-                if (widget.dataProvider.geminiAPIKey.isNotEmpty &&
-                    widget.dataProvider.geminiModel.isNotEmpty)
+                if (widget.dataProvider.geminiModel.isNotEmpty)
                   Center(
                     child: TextButton(
                       onPressed: () {

@@ -93,20 +93,14 @@ class _HomePageState extends State<HomePage> {
     DataProvider dataProvider =
         Provider.of<DataProvider>(context, listen: false);
     return dataProvider.init().then((_) {
-      if (dataProvider.geminiAPIKey.isEmpty) {
+      if (dataProvider.geminiModel == '' || dataProvider.geminiModel.isEmpty) {
         _redirectTo(
-          context,
-          SettingPage(
-            dataProvider: dataProvider,
-          ),
-          callback: (value) {
-            _redirectTo(
-                context,
-                const WelcomeScreen(
-                  allowSkip: false,
-                ));
-          },
-        );
+            context,
+            const WelcomeScreen(
+              allowSkip: false,
+            ), callback: (_) {
+          dataProvider.initGemini();
+        });
       }
     });
   }

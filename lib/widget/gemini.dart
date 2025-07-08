@@ -40,7 +40,8 @@ class _GeminiDescriptionHelperState
   @override
   void initState() {
     super.initState();
-    _model = getFirebaseAI().generativeModel(model:  Provider.of<DataProvider>(context, listen: false).geminiModel);
+    _model = getFirebaseAI().generativeModel(
+        model: Provider.of<DataProvider>(context, listen: false).geminiModel);
     _chat = _model.startChat();
   }
 
@@ -423,10 +424,12 @@ class GeminiChatRoomDialog extends StatelessWidget {
 }
 
 class GeminiChatWidget extends StatefulWidget {
-  const GeminiChatWidget({required this.chat, super.key, this.shortcuts});
+  const GeminiChatWidget(
+      {required this.chat, super.key, this.shortcuts, this.loading = false});
 
   final List<Widget> Function(TextEditingController)? shortcuts;
   final ChatSession chat;
+  final bool loading;
 
   @override
   State<GeminiChatWidget> createState() => _GeminiChatWidgetState();
@@ -438,29 +441,52 @@ class _GeminiChatWidgetState extends State<GeminiChatWidget> {
   final TextEditingController _textController = TextEditingController();
   final FocusNode _textFieldFocus = FocusNode(debugLabel: 'TextField');
   bool _loading = false;
+  int _lastHistoryLength = 0;
 
   @override
   void initState() {
     super.initState();
-
+    _loading = widget.loading;
     _chat = widget.chat;
-    _scrollDown();
+    _lastHistoryLength = _chat.history.length;
+    // Don't scroll here; wait for build
   }
 
-  void _scrollDown() {
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) {
-        if (_scrollController.hasClients && mounted) {
+  @override
+  void didUpdateWidget(covariant GeminiChatWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.loading != oldWidget.loading) {
+      setState(() {
+        _loading = widget.loading;
+      });
+    }
+    // If chat history length increased, scroll down
+    if (_chat.history.length > _lastHistoryLength) {
+      _scrollDown();
+      _lastHistoryLength = _chat.history.length;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Also scroll after dependencies change, in case of hot reload
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollDown());
+  }
+
+ void _scrollDown() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        final max = _scrollController.position.maxScrollExtent;
+        if (max > 0) {
           _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: const Duration(
-              milliseconds: 750,
-            ),
+            max,
+            duration: const Duration(milliseconds: 500),
             curve: Curves.easeOutCirc,
           );
         }
-      },
-    );
+      }
+    });
   }
 
   @override
@@ -568,7 +594,7 @@ class _GeminiChatWidgetState extends State<GeminiChatWidget> {
       } else {
         setState(() {
           _loading = false;
-          _scrollDown();
+          // Don't call _scrollDown here; let didUpdateWidget handle it
         });
       }
     } catch (e) {

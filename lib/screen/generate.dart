@@ -6,8 +6,10 @@ import 'package:personal_cv/providers/data_provider.dart';
 import 'package:personal_cv/screen/welcome.dart';
 import 'package:personal_cv/widget/gemini.dart';
 import 'package:personal_cv/util/gemini_helper.dart';
+import 'package:personal_cv/widget/pdf.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 void _redirectTo(BuildContext context, Widget widget,
     {void Function(dynamic)? callback}) {
@@ -198,16 +200,20 @@ class _GenerateRequirementFormState extends State<GenerateRequirementForm> {
 
     String prompt = '';
     if (cvType == 'Job') {
-      prompt = '''The resume target is to apply job.
-    The requirements as the follows.
+      prompt =
+          '''You are a professional resume writer. The resume target is to apply job.
+    The requirements of the job as the follows.
     '$requirement'
-    Wait for my criteria in the next prompt before any action.
+    Ensure your resume is suitable and target for the job.
+    Wait for the user background information in the next prompt before any action.
   ''';
     } else if (cvType == 'Academic') {
-      prompt = '''The resume target is for academic requirements.
-    The requirements as the follows.
+      prompt =
+          '''You are a professional resume writer. The resume target is for academic requirements.
+    The requirements of the academic as the follows.
     '$requirement'
-    Wait for my criteria in the next prompt before any action.
+    Ensure your resume is suitable and target for the academic.
+    Wait for the user background information in the next prompt before any action.
   ''';
     } else {
       throw Exception('Unsupported resume type');
@@ -223,9 +229,10 @@ class _GenerateRequirementFormState extends State<GenerateRequirementForm> {
         .sendMessage(
       Content.text(
         '''
-You are writing a resume.  Before starting, understand the background by looking into the json.
+Understand the background by looking into the json.
 '${jsonEncode(Provider.of<DataProvider>(context, listen: false).backgroundInfo)}'
-Wait for my instruction in the next prompt before any action.
+Only use the above background information as the resume details.
+Wait for my instruction in the next prompt for the output requirements.
             ''',
       ),
     )
@@ -235,16 +242,26 @@ Wait for my instruction in the next prompt before any action.
         updateLoadingMessage('Generating tailored resume content...');
         return chat.sendMessage(Content.text('''
 Finish writing your resume based on the following instruction
+1. If the user has not provided any background information, return "Please provide your background information first before generating a resume."
+2. If the user provide with invalid requirements, return "Please provide a valid requirement before generating a resume." 
+3. If the user do not fullfill both two conditions, return "Please provide your background information and requirement before generating a resume."
+4. If the user background information does not fulfill the requirement, try your best knowledge, without making up any information, to finish the resume.
+5. If everything is ready, finish the resume based on the requirement
+
+Resume writing instruction
 1. Prioritize and highlight the background information fulfill the requirement
 2. Use the requirement keyword for the relvant background information elaboration
 3. Tailoring for the Role
 4. Everything base on given background information
-5. Highlighting Preferred Qualifications
-6. For work experience, write point in the format of "Accomplished [X] as measured by [Y], by doing [Z]."
-7. Quantify Achievements
-8. Use strong action verb
-9. One or two page length
-10. Order each items in the category from most recent to least recent
+5. Do not provide filling blanks or information, the result should be ready to use
+6. Highlighting Preferred Qualifications
+7. For work experience, write point in the format of "Accomplished [X] as measured by [Y], by doing [Z]."
+8. Quantify Achievements
+9. Use strong action verb
+10. Less than two page length only
+11. Order each items in the category from most recent to least recent, if do not include if it is outdated or not relevant
+12. Return only the resume content without any introduction, explanation, or conclusion
+13. Return in markdown format, wrap the resume content in ```resume <resume content>```
   ''')).then((_) {
           updateLoadingMessage('Resume generation complete');
           return chat;
@@ -415,42 +432,7 @@ Finish writing your resume based on the following instruction
                         ),
                       );
                     } else if (snapshot.hasData) {
-                      return GeminiChatWidget(
-                        chat: snapshot.data!,
-                        shortcuts: (textController) {
-                          return [
-                            GeminiActionChip(
-                              filled: true,
-                              name: 'Cover Letter',
-                              tooltip: 'Write cover letter',
-                              onPressed: () {
-                                textController.text =
-                                    '''Write a cover letter based on the requirement and background base on the following instruction.
-1. Use professional tone
-2. Limit to 500 words
-3. Highlight the key points
-4. Use bullet points''';
-                              },
-                            ),
-                            GeminiActionChip(
-                              name: 'Rate',
-                              tooltip: 'Give a rating to the generated result',
-                              onPressed: () {
-                                textController.text =
-                                    '''Grade the document based on the requirements.  Give comments on how to improve.''';
-                              },
-                            ),
-                            GeminiActionChip(
-                              name: 'Simulate',
-                              tooltip: 'Try to simulate as a reviewer',
-                              onPressed: () {
-                                textController.text =
-                                    '''If you are the party looking for the person. Do you think it is a good fit.''';
-                              },
-                            ),
-                          ];
-                        },
-                      );
+                      return GenerationResult(chat: snapshot.data!);
                     } else {
                       return const Center(
                         child: Text('No resume generated'),
@@ -467,6 +449,350 @@ Finish writing your resume based on the following instruction
           ],
         ),
       ),
+    );
+  }
+}
+
+class GenerationResult extends StatefulWidget {
+  const GenerationResult({
+    super.key,
+    required this.chat,
+  });
+
+  final ChatSession chat;
+
+  @override
+  State<GenerationResult> createState() => _GenerationResultState();
+}
+
+class _GenerationResultState extends State<GenerationResult> {
+  bool _usePdfWidget = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            const Text('View:'),
+            Switch(
+              value: _usePdfWidget,
+              onChanged: (val) {
+                setState(() {
+                  _usePdfWidget = val;
+                });
+              },
+            ),
+            Text(_usePdfWidget ? 'PDF' : 'Chat'),
+          ],
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            ElevatedButton.icon(
+              icon: const Icon(Icons.edit),
+              label: const Text('Follow Up'),
+              onPressed: _isLoading ? null : _handleFollowup,
+            ),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.description),
+              label: const Text('Cover Letter'),
+              onPressed: _isLoading ? null : _handleCoverLetter,
+            ),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.star),
+              label: const Text('Rate'),
+              onPressed: _isLoading ? null : _handleRate,
+            ),
+          ],
+        ),
+        if (_isLoading)
+          const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: LinearProgressIndicator(),
+          ),
+        Flexible(
+          child: IndexedStack(
+            index: _usePdfWidget ? 0 : 1,
+            children: [
+              _buildPdfList(),
+              GeminiChatWidget(
+                loading: _isLoading,
+                chat: widget.chat,
+              ),
+            ]
+                .map(
+                  (e) => Align(
+                    alignment: Alignment.topCenter,
+                    child: e,
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  bool _isLoading = false;
+
+  Future<void> _handleFollowup() async {
+    // Extract available document types from chat history (same as _buildPdfList logic)
+    final Map<String, Map<String, dynamic>> latestDocs = {};
+    final RegExp markdownRegex =
+        RegExp(r'```(\w[\w ]*)\s*(.*?)\s*```', dotAll: true);
+    final history = widget.chat.history.toList();
+    for (int i = history.length - 1; i >= 0; i--) {
+      final msg = history[i];
+      if (msg.role == 'user') continue;
+      final text = msg.parts.whereType<TextPart>().map((e) => e.text).join('');
+      final match = markdownRegex.firstMatch(text);
+      if (match != null && match.groupCount >= 2) {
+        final docType = (match.group(1)?.trim() ?? 'Document');
+        if (!latestDocs.containsKey(docType)) {
+          latestDocs[docType] = {};
+        }
+      }
+    }
+    final docTypes = latestDocs.keys.toList();
+
+    String? selectedDocType = docTypes.isNotEmpty ? docTypes.first : null;
+    String followupText = '';
+    final controller = TextEditingController();
+
+    final feedback = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Follow Up'),
+              content: SizedBox(
+                width: MediaQuery.of(context).size.width * 0.8,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: selectedDocType,
+                      items: docTypes
+                          .map((type) => DropdownMenuItem(
+                                value: type,
+                                child: Text(type),
+                              ))
+                          .toList(),
+                      onChanged: (val) {
+                        setState(() {
+                          selectedDocType = val;
+                        });
+                      },
+                      decoration: const InputDecoration(
+                        labelText: 'Document Type',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: controller,
+                      decoration: const InputDecoration(
+                        hintText: 'Any follow up to the current document?',
+                        border: OutlineInputBorder(),
+                      ),
+                      minLines: 2,
+                      maxLines: 5,
+                      autofocus: true,
+                      onChanged: (val) {
+                        setState(() {
+                          followupText = val.trim();
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed:
+                      (selectedDocType != null && followupText.isNotEmpty)
+                          ? () => Navigator.of(context).pop({
+                                'docType': selectedDocType!,
+                                'text': followupText,
+                              })
+                          : null,
+                  child: const Text('Send'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    if (feedback == null ||
+        feedback['text']!.isEmpty ||
+        feedback['docType'] == null) return;
+    setState(() => _isLoading = true);
+    try {
+      await widget.chat.sendMessage(Content.text(
+          'Update the previous ${feedback['docType']} document based on the following follow up. Return the updated document in markdown format only, wrapped in ```resume <updated resume>``` or ```cover letter <updated cover letter>``` as appropriate. Follow up: ${feedback['text']}'));
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleCoverLetter() async {
+    setState(() => _isLoading = true);
+    try {
+      await widget.chat.sendMessage(Content.text(
+        '''Write a cover letter based on the requirement and background base on the following instruction.
+1. Use professional tone
+2. Limit to 500 words
+3. Highlight the key points
+4. Use bullet points
+Return only the cover letter in markdown format, wrapped in ```cover letter <cover letter content>```.''',
+      ));
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleRate() async {
+    setState(() => _isLoading = true);
+    String? ratingResult;
+    try {
+      await widget.chat.sendMessage(Content.text(
+        'Imagine you are the reviewer. Grade the document based on the requirements. Give comments on how to improve. Return only the rating and comments, no markdown.',
+      ));
+      // After sending, the latest message is at the end of widget.chat.history
+      ratingResult = widget.chat.history.last.parts
+          .whereType<TextPart>()
+          .map((e) => e.text)
+          .join('');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+    if (ratingResult.isNotEmpty) {
+      // ignore: use_build_context_synchronously
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Rating Result'),
+          content: SingleChildScrollView(
+            child: SelectionArea(
+              child: MarkdownBody(
+                data: ratingResult!,
+                styleSheet: MarkdownStyleSheet(
+                  h1: TextStyle(
+                      fontSize: 24,
+                      color: Theme.of(context).colorScheme.primary),
+                  code: TextStyle(
+                      fontFamily: 'monospace',
+                      color: Theme.of(context).colorScheme.onSurface),
+                  codeblockDecoration: BoxDecoration(
+                      color:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(4)),
+                  // Add more styles as needed
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  String toTitleCase(String str) {
+    return str
+        .split(' ')
+        .map((w) => w[0].toUpperCase() + w.substring(1).toLowerCase())
+        .join(' ');
+  }
+
+  Widget _buildPdfList() {
+    final Map<String, Map<String, dynamic>> latestDocs = {};
+    final Map<String, int> versionCounts = {};
+    final RegExp markdownRegex =
+        RegExp(r'```(\w[\w ]*)\s*(.*?)\s*```', dotAll: true);
+    final history = widget.chat.history.toList();
+
+    // Iterate in reverse to get the latest for each doc type
+    for (int i = history.length - 1; i >= 0; i--) {
+      final msg = history[i];
+      if (msg.role == 'user') continue;
+      final text = msg.parts.whereType<TextPart>().map((e) => e.text).join('');
+      final match = markdownRegex.firstMatch(text);
+      if (match != null && match.groupCount >= 2) {
+        final docType = (match.group(1)?.trim() ?? 'Document');
+        final content = match.group(2) ?? text;
+        if (!latestDocs.containsKey(docType)) {
+          // Count total versions for this docType
+          versionCounts[docType] = history.where((m) {
+            if (m.role == 'user') return false;
+            final t = m.parts.whereType<TextPart>().map((e) => e.text).join('');
+            final mt = markdownRegex.firstMatch(t);
+            return mt != null && (mt.group(1)?.trim() ?? '') == docType;
+          }).length;
+          latestDocs[docType] = {
+            'content': content,
+            'version': versionCounts[docType]!,
+          };
+        }
+      }
+    }
+
+    if (latestDocs.isEmpty) {
+      return const Center(child: Text('No markdown previews in chat history.'));
+    }
+
+    final pdfPreviews = latestDocs.entries.map((entry) {
+      final docType = entry.key;
+      final content = entry.value['content'] as String;
+      final version = entry.value['version'] as int;
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+        child: PdfWidget(
+          content: content,
+          title: '${toTitleCase(docType)} v$version',
+          fileName:
+              '${docType.replaceAll(' ', '_').toLowerCase()}_v$version.pdf',
+          isPaid: false,
+        ),
+      );
+    }).toList();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth > 800) {
+          // Wide screen: Row
+          return Wrap(
+            children: pdfPreviews
+                .map(
+                  (e) => Container(
+                    constraints: const BoxConstraints(maxWidth: 800),
+                    child: e,
+                  ),
+                )
+                .toList(),
+          );
+        } else {
+          // Narrow screen: Column
+          return ListView(
+            shrinkWrap: true,
+            children: pdfPreviews,
+          );
+        }
+      },
     );
   }
 }

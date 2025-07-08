@@ -39,9 +39,10 @@ We welcome contributions from the community! If you'd like to contribute, please
 ## Roadmap
 - [X] Auomatic Input from Academic resume
 - [X] Import Profile from ~~Linkedin~~ All files
+- [X] Generate resume to PDF
 - [ ] Auomatic Input from scanning reference letters
 - [ ] Automatic job web scraping
-- [ ] Generate resume word from Gemini
+- [ ] <del>Generate resume word from Gemini</del>
 
 See the [open issues](https://github.com/othneildrew/Best-README-Template/issues) for a full list of proposed features (and known issues).
 

@@ -17,7 +17,7 @@ class PdfWidget extends StatefulWidget {
     required this.content,
     this.fileName,
     this.title,
-    this.isPaid = false,
+    this.isPaid = true,
     this.maxPages = 2,
   });
 

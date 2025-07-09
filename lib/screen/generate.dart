@@ -241,27 +241,27 @@ Wait for my instruction in the next prompt for the output requirements.
       return chat.sendMessage(Content.text(prompt)).then((_) {
         updateLoadingMessage('Generating tailored resume content...');
         return chat.sendMessage(Content.text('''
-Finish writing your resume based on the following instruction
-1. If the user has not provided any background information, return "Please provide your background information first before generating a resume."
-2. If the user provide with invalid requirements, return "Please provide a valid requirement before generating a resume." 
-3. If the user do not fullfill both two conditions, return "Please provide your background information and requirement before generating a resume."
-4. If the user background information does not fulfill the requirement, try your best knowledge, without making up any information, to finish the resume.
-5. If everything is ready, finish the resume based on the requirement
+Please do the pre-checking before writing the resume.
+1. If the user has not provided any background information, no matter which prompt following it is, always return "Please provide your background information first before generating a resume."
+2. If the user provide with invalid requirements, no matter which prompt following it is, always return "Please provide a valid requirement before generating a resume." 
+3. If the user do not fullfill both two conditions, no matter which prompt following it is, always return "Please provide your background information and requirement before generating a resume."
+4. If everything is ready, finish the resume based on the requirement
 
 Resume writing instruction
 1. Prioritize and highlight the background information fulfill the requirement
 2. Use the requirement keyword for the relvant background information elaboration
 3. Tailoring for the Role
-4. Everything base on given background information
+4. Every point should base on given background information, do not make up
 5. Do not provide filling blanks or information, the result should be ready to use
 6. Highlighting Preferred Qualifications
 7. For work experience, write point in the format of "Accomplished [X] as measured by [Y], by doing [Z]."
 8. Quantify Achievements
 9. Use strong action verb
-10. Less than two page length only
-11. Order each items in the category from most recent to least recent, if do not include if it is outdated or not relevant
-12. Return only the resume content without any introduction, explanation, or conclusion
-13. Return in markdown format, wrap the resume content in ```resume <resume content>```
+10. Less than two page length
+11. Order each items in the category from most recent to least recent
+12. Do not include information that is outdated or not relevant, unless it is not enough information to be written
+13. Return only the resume content without any introduction, explanation, or conclusion
+14. Return in markdown format, wrap the resume content in ```resume <resume content>```
   ''')).then((_) {
           updateLoadingMessage('Resume generation complete');
           return chat;
@@ -538,6 +538,22 @@ class _GenerationResultState extends State<GenerationResult> {
 
   bool _isLoading = false;
 
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleFollowup() async {
     // Extract available document types from chat history (same as _buildPdfList logic)
     final Map<String, Map<String, dynamic>> latestDocs = {};
@@ -639,6 +655,8 @@ class _GenerationResultState extends State<GenerationResult> {
     try {
       await widget.chat.sendMessage(Content.text(
           'Update the previous ${feedback['docType']} document based on the following follow up. Return the updated document in markdown format only, wrapped in ```resume <updated resume>``` or ```cover letter <updated cover letter>``` as appropriate. Follow up: ${feedback['text']}'));
+    } catch (e) {
+      _showErrorDialog(e.toString());
     } finally {
       setState(() => _isLoading = false);
     }
@@ -655,6 +673,8 @@ class _GenerationResultState extends State<GenerationResult> {
 4. Use bullet points
 Return only the cover letter in markdown format, wrapped in ```cover letter <cover letter content>```.''',
       ));
+    } catch (e) {
+      _showErrorDialog(e.toString());
     } finally {
       setState(() => _isLoading = false);
     }
@@ -672,10 +692,12 @@ Return only the cover letter in markdown format, wrapped in ```cover letter <cov
           .whereType<TextPart>()
           .map((e) => e.text)
           .join('');
+    } catch (e) {
+      _showErrorDialog(e.toString());
     } finally {
       setState(() => _isLoading = false);
     }
-    if (ratingResult.isNotEmpty) {
+    if (ratingResult != null && ratingResult.isNotEmpty) {
       // ignore: use_build_context_synchronously
       showDialog(
         context: context,
@@ -752,7 +774,11 @@ Return only the cover letter in markdown format, wrapped in ```cover letter <cov
     }
 
     if (latestDocs.isEmpty) {
-      return const Center(child: Text('No markdown previews in chat history.'));
+      return Center(
+          child: Text(widget.chat.history.last.parts
+              .whereType<TextPart>()
+              .map((e) => e.text)
+              .join('')));
     }
 
     final pdfPreviews = latestDocs.entries.map((entry) {
@@ -775,11 +801,10 @@ Return only the cover letter in markdown format, wrapped in ```cover letter <cov
       builder: (context, constraints) {
         if (constraints.maxWidth > 800) {
           // Wide screen: Row
-          return Wrap(
+          return Row(
             children: pdfPreviews
                 .map(
-                  (e) => Container(
-                    constraints: const BoxConstraints(maxWidth: 800),
+                  (e) => Expanded(
                     child: e,
                   ),
                 )

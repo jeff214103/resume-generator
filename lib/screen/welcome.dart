@@ -288,82 +288,85 @@ class WelcomePageLayout extends StatelessWidget {
   }
 }
 
-
 class WelcomeDialog extends StatelessWidget {
   const WelcomeDialog({super.key});
 
   @override
   Widget build(BuildContext context) {
     final dataProvider = Provider.of<DataProvider>(context, listen: false);
-    
+
     return Dialog(
       child: Container(
         constraints: const BoxConstraints(maxWidth: 600),
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Welcome to Resume Generator!',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Welcome to Resume Generator!',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'It looks like you\'re new here. You can:',
-              style: TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            _buildOption(
-              context,
-              icon: Icons.upload_file,
-              title: 'Import from any file',
-              description: 'Import your resume or CV from a PDF, DOCX, or other text-based file. Examples:\n1. Current Resume\n2. Linkedin Export PDF\n3. Profiles',
-              onTap: () {
-                dataProvider.importAdvance(context).then((value) {
-                  if (value != true) return;
-                  Navigator.of(context).pop();
-                });
-              },
-            ),
-            _buildOption(
-              context,
-              icon: Icons.insert_drive_file,
-              title: 'Import from exported JSON',
-              description: 'Restore your data from a previously exported Resume Generator JSON file',
-              onTap: () {
-                dataProvider.importData(context).then((value) {
-                  if (value != true) return;
-                  Navigator.of(context).pop();
-                });
-              },
-            ),
-            _buildOption(
-              context,
-              icon: Icons.edit_note,
-              title: 'Start from scratch',
-              description: 'Manually enter your information',
-              onTap: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Or if you prefer, you can close this dialog and start adding information manually using the + buttons.',
-              style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
-            ),
-            const SizedBox(height: 16),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
+              const SizedBox(height: 16),
+              const Text(
+                'It looks like you\'re new here. You can:',
+                style: TextStyle(fontSize: 16),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              _buildOption(
+                context,
+                icon: Icons.upload_file,
+                title: 'Import from any file',
+                description:
+                    'Import your resume or CV from a PDF, DOCX, or other text-based file. Examples:\n1. Current Resume\n2. Linkedin Export PDF\n3. Profiles',
+                onTap: () {
+                  dataProvider.importAdvance(context).then((value) {
+                    if (value != true) return;
+                    Navigator.of(context).pop();
+                  });
+                },
+              ),
+              _buildOption(
+                context,
+                icon: Icons.insert_drive_file,
+                title: 'Import from exported JSON',
+                description:
+                    'Restore your data from a previously exported Resume Generator JSON file',
+                onTap: () {
+                  dataProvider.importData(context).then((value) {
+                    if (value != true) return;
+                    Navigator.of(context).pop();
+                  });
+                },
+              ),
+              _buildOption(
+                context,
+                icon: Icons.edit_note,
+                title: 'Start from scratch',
+                description: 'Manually enter your information',
+                onTap: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Or if you prefer, you can close this dialog and start adding information manually using the + buttons.',
+                style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+              ),
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Close'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

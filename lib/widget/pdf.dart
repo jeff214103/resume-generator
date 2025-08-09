@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PdfWidget extends StatefulWidget {
   final String content;
@@ -11,6 +12,7 @@ class PdfWidget extends StatefulWidget {
   final String? title;
   final bool isPaid;
   final int maxPages;
+  final bool isModifiable; // New parameter
 
   const PdfWidget({
     super.key,
@@ -19,6 +21,7 @@ class PdfWidget extends StatefulWidget {
     this.title,
     this.isPaid = true,
     this.maxPages = 2,
+    this.isModifiable = true, // Default to true
   });
 
   @override
@@ -26,10 +29,113 @@ class PdfWidget extends StatefulWidget {
 }
 
 class _PdfWidgetState extends State<PdfWidget> {
+  // State from PDFPlaceholderEditor
+  final Map<String, TextEditingController> _controllers = {};
+  final Map<String, String> _replacements = {};
+  bool _hasPlaceholders = false;
+
+  final ScrollController _placeholderScrollController = ScrollController();
+
+  // State from original PdfWidget
   bool _isGenerating = false;
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.isModifiable) {
+      _initializePlaceholders();
+      _loadSavedReplacements();
+    }
+  }
+
+  @override
+  void didUpdateWidget(PdfWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.content != oldWidget.content && widget.isModifiable) {
+      _initializePlaceholders();
+    }
+  }
+
+  // --- Placeholder Methods (from PDFPlaceholderEditor) ---
+
+  Future<void> _loadSavedReplacements() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      for (final key in _controllers.keys) {
+        final String saved = prefs.getString(key) ?? key;
+        _replacements[key] = saved;
+        _controllers[key]!.text = saved;
+      }
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint('Error loading saved replacements: $e');
+    }
+  }
+
+  Future<void> _saveReplacements(String key, String value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(key, value);
+    } catch (e) {
+      debugPrint('Error saving replacements: $e');
+    }
+  }
+
+  void _initializePlaceholders() {
+    final placeholderRegex = RegExp(r'\[([^\[\]]+)\]');
+    final matches = placeholderRegex.allMatches(widget.content);
+    final placeholders = matches.map((m) => m.group(1)!.trim()).toSet();
+
+    setState(() {
+      _hasPlaceholders = placeholders.isNotEmpty;
+
+      // Initialize controllers for new placeholders
+      for (final placeholder in placeholders) {
+        if (!_controllers.containsKey(placeholder)) {
+          _controllers[placeholder] = TextEditingController(
+            text: _replacements[placeholder] ?? '',
+          )..addListener(() {
+              final text = _controllers[placeholder]!.text;
+              _replacements[placeholder] = text;
+              _saveReplacements(placeholder, text);
+              setState(() {});
+            });
+        }
+      }
+
+      // Remove controllers for placeholders that no longer exist
+      _controllers.removeWhere((key, _) => !placeholders.contains(key));
+    });
+  }
+
+  String _getProcessedContent() {
+    if (!widget.isModifiable) {
+      return widget.content;
+    }
+    String result = widget.content;
+    _replacements.forEach((key, value) {
+      result = result.replaceAll('[$key]', value);
+    });
+    return result;
+  }
+
+  @override
+  void dispose() {
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  // --- Build Method ---
+
+  @override
   Widget build(BuildContext context) {
+    // Get the processed content with replacements
+    final processedContent = _getProcessedContent();
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -54,6 +160,53 @@ class _PdfWidgetState extends State<PdfWidget> {
             ],
           ),
           const SizedBox(height: 12),
+
+          // --- Integrated Placeholder Editor UI ---
+          if (widget.isModifiable && _hasPlaceholders)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: 60,
+                  child: Scrollbar(
+                    thumbVisibility: true,
+                    controller: _placeholderScrollController,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 10, top: 10),
+                      child: ListView(
+                        controller: _placeholderScrollController,
+                        shrinkWrap: true,
+                        scrollDirection: Axis.horizontal,
+                        children: _controllers.entries.map((entry) {
+                          return Container(
+                            padding: const EdgeInsets.only(
+                                left: 2, right: 2, bottom: 2),
+                            width: 200,
+                            child: TextField(
+                              controller: entry.value,
+                              decoration: InputDecoration(
+                                labelText: entry.key,
+                                border: const OutlineInputBorder(),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              onChanged: (_) {
+                                // setState is called by the controller's listener
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                ),
+                const Divider(height: 20),
+              ],
+            ),
+
+          // --- PDF Preview Area ---
           Container(
             width: double.infinity,
             height: 300,
@@ -67,7 +220,7 @@ class _PdfWidgetState extends State<PdfWidget> {
             child: SingleChildScrollView(
               child: SelectionArea(
                 child: MarkdownBody(
-                  data: widget.content,
+                  data: processedContent, // Use processed content here
                   styleSheet: MarkdownStyleSheet(
                     h1: TextStyle(
                         fontSize: 24,
@@ -80,7 +233,6 @@ class _PdfWidgetState extends State<PdfWidget> {
                             .colorScheme
                             .surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(4)),
-                    // Add more styles as needed
                   ),
                 ),
               ),
@@ -111,13 +263,16 @@ class _PdfWidgetState extends State<PdfWidget> {
     );
   }
 
+  // --- PDF Generation Methods (Unchanged, but now use processed content) ---
+
   Future<void> _generatePdf() async {
     setState(() {
       _isGenerating = true;
     });
 
     try {
-      // Create PDF document
+      final contentToRender =
+          _getProcessedContent(); // Use processed content for PDF
       pw.Document pdf = pw.Document();
 
       double scaleFactor = 1.0;
@@ -127,62 +282,49 @@ class _PdfWidgetState extends State<PdfWidget> {
       List<double> contentHeights;
       List<bool> canBreakBefore;
 
-      // Binary search for optimal scale factor
-      double minScale = 0.5; // Minimum scale factor
-      double maxScale = 1.0; // Maximum scale factor
+      double minScale = 0.5;
+      double maxScale = 1.0;
       double optimalScale = 1.0;
 
-      // First, try with maximum scale to see if it fits
+      // First, try with maximum scale
       pdf = pw.Document();
       Map<String, dynamic> contentResult =
-          _buildMarkdownContent(widget.content, maxScale);
+          _buildMarkdownContent(contentToRender, maxScale);
       allContent = contentResult['widgets'] as List<pw.Widget>;
       contentHeights = contentResult['heights'] as List<double>;
       canBreakBefore = contentResult['canBreakBefore'] as List<bool>;
       numberOfPages = _createPagesWithContent(
           allContent, contentHeights, canBreakBefore, pdf);
 
-      // If it fits with maximum scale, no need for binary search
       if (numberOfPages <= widget.maxPages) {
         optimalScale = maxScale;
       } else {
         // Binary search to find the optimal scale factor
         while (maxScale - minScale > 0.0001) {
-          // Precision threshold
-
           double midScale = (minScale + maxScale) / 2;
-          // Clear previous document content
           pdf = pw.Document();
-
-          // Build content with current scale factor
           Map<String, dynamic> contentResult =
-              _buildMarkdownContent(widget.content, midScale);
+              _buildMarkdownContent(contentToRender, midScale);
           allContent = contentResult['widgets'] as List<pw.Widget>;
           contentHeights = contentResult['heights'] as List<double>;
           canBreakBefore = contentResult['canBreakBefore'] as List<bool>;
-
-          // Create pages with content
           numberOfPages = _createPagesWithContent(
               allContent, contentHeights, canBreakBefore, pdf);
 
           if (numberOfPages <= widget.maxPages) {
-            // This scale works, try a larger scale
             optimalScale = midScale;
             minScale = midScale;
           } else {
-            // This scale is too large, try a smaller scale
             maxScale = midScale;
           }
         }
-
         if (numberOfPages > widget.maxPages) {
           optimalScale = minScale;
         }
-
-        // Final check with the optimal scale found
+        // Final check with the optimal scale
         pdf = pw.Document();
         Map<String, dynamic> contentResult =
-            _buildMarkdownContent(widget.content, optimalScale);
+            _buildMarkdownContent(contentToRender, optimalScale);
         allContent = contentResult['widgets'] as List<pw.Widget>;
         contentHeights = contentResult['heights'] as List<double>;
         canBreakBefore = contentResult['canBreakBefore'] as List<bool>;
@@ -190,17 +332,12 @@ class _PdfWidgetState extends State<PdfWidget> {
             allContent, contentHeights, canBreakBefore, pdf);
       }
 
-      // Generate PDF bytes
       final pdfBytes = await pdf.save();
-
       setState(() {
         _isGenerating = false;
       });
-
-      // Download the PDF
       _downloadPdfBytes(pdfBytes);
 
-      // Show success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -214,12 +351,9 @@ class _PdfWidgetState extends State<PdfWidget> {
       setState(() {
         _isGenerating = false;
       });
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error generating PDF: $e'),
-          ),
+          SnackBar(content: Text('Error generating PDF: $e')),
         );
       }
     }
@@ -643,11 +777,5 @@ class _PdfWidgetState extends State<PdfWidget> {
 
     // Clean up the URL object
     html.Url.revokeObjectUrl(url);
-  }
-
-  Future<void> _downloadPdf() async {
-    // This method is now handled by _generatePdf for web
-    // The download happens immediately after generation
-    await _generatePdf();
   }
 }

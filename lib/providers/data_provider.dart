@@ -16,6 +16,7 @@ import 'package:personal_cv/model/publication.dart';
 import 'package:personal_cv/model/skill.dart';
 import 'package:personal_cv/model/workexp.dart';
 import 'package:personal_cv/util/gemini_helper.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 
@@ -72,6 +73,9 @@ class DataProvider extends ChangeNotifier {
     BackgroundInfo.keys.map((e) => storage.delete(key: e)).toList();
 
     _backgroundInfo = BackgroundInfo.fromJson({});
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
 
     notifyListeners();
   }
@@ -380,7 +384,7 @@ class DataProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> importData() async {
+  Future<bool> importData(BuildContext context) async {
     if (kIsWeb) {
       return FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -398,6 +402,9 @@ class DataProvider extends ChangeNotifier {
           );
 
           notifyListeners();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Data import successfully')),
+          );
           return true;
         } else {
           return false;
@@ -523,6 +530,10 @@ Return the result using this JSON schema:
           );
 
           notifyListeners();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Data import successfully')),
+          );
 
           return true;
         } catch (e) {

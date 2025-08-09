@@ -152,10 +152,30 @@ class _HomePageState extends State<HomePage> {
 class MainLayout extends StatelessWidget {
   const MainLayout({super.key});
 
+  bool _isBackgroundInfoEmpty(DataProvider dataProvider) {
+    return dataProvider.backgroundInfo.workExperiences.isEmpty &&
+        dataProvider.backgroundInfo.academics.isEmpty &&
+        dataProvider.backgroundInfo.skills.isEmpty &&
+        dataProvider.backgroundInfo.languages.isEmpty &&
+        dataProvider.backgroundInfo.activities.isEmpty &&
+        dataProvider.backgroundInfo.awards.isEmpty &&
+        dataProvider.backgroundInfo.courses.isEmpty &&
+        dataProvider.backgroundInfo.publications.isEmpty;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Consumer<DataProvider>(
-      builder: (context, dataProvider, child) => SizedBox(
+    return Consumer<DataProvider>(builder: (context, dataProvider, child) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_isBackgroundInfoEmpty(dataProvider) && dataProvider.geminiModel.isNotEmpty) {
+          showDialog(
+            context: context,
+            barrierDismissible: false, // Prevent dismissing by tapping outside
+            builder: (context) => const WelcomeDialog(),
+          );
+        }
+      });
+      return SizedBox(
         width: double.infinity,
         child: ListView(
           padding: EdgeInsets.zero,
@@ -601,8 +621,8 @@ class MainLayout extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
+      );
+    });
   }
 }
 

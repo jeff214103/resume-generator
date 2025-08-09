@@ -32,7 +32,7 @@ class ImportDialog extends StatelessWidget {
                     iconData: Icons.download,
                     background: Colors.deepOrange,
                     onTap: () {
-                      dataProvider.importData().then((value) {
+                      dataProvider.importData(context).then((value) {
                         if (value != true) {
                           return;
                         }

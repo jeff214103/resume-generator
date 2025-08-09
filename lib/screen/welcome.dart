@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/link.dart';
+import 'package:personal_cv/providers/data_provider.dart';
+import 'package:provider/provider.dart';
 
 List<Map<String, dynamic>> items = [
   {
@@ -281,6 +283,136 @@ class WelcomePageLayout extends StatelessWidget {
             ),
           )
         ],
+      ),
+    );
+  }
+}
+
+
+class WelcomeDialog extends StatelessWidget {
+  const WelcomeDialog({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final dataProvider = Provider.of<DataProvider>(context, listen: false);
+    
+    return Dialog(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 600),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Welcome to Resume Generator!',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'It looks like you\'re new here. You can:',
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            _buildOption(
+              context,
+              icon: Icons.upload_file,
+              title: 'Import from any file',
+              description: 'Import your resume or CV from a PDF, DOCX, or other text-based file. Examples:\n1. Current Resume\n2. Linkedin Export PDF\n3. Profiles',
+              onTap: () {
+                dataProvider.importAdvance(context).then((value) {
+                  if (value != true) return;
+                  Navigator.of(context).pop();
+                });
+              },
+            ),
+            _buildOption(
+              context,
+              icon: Icons.insert_drive_file,
+              title: 'Import from exported JSON',
+              description: 'Restore your data from a previously exported Resume Generator JSON file',
+              onTap: () {
+                dataProvider.importData(context).then((value) {
+                  if (value != true) return;
+                  Navigator.of(context).pop();
+                });
+              },
+            ),
+            _buildOption(
+              context,
+              icon: Icons.edit_note,
+              title: 'Start from scratch',
+              description: 'Manually enter your information',
+              onTap: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Or if you prefer, you can close this dialog and start adding information manually using the + buttons.',
+              style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+            ),
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOption(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String description,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(icon, size: 32),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      description,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Theme.of(context).textTheme.bodySmall?.color,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
       ),
     );
   }
